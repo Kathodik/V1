@@ -5,13 +5,13 @@ import { references } from '../data/mockData';
 
 const References = () => {
   return (
-    <div className="min-h-screen bg-slate-900 py-20">
+    <div className="min-h-screen bg-gradient-to-b from-white to-slate-50 py-20">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
-            Unsere <span className="text-teal-400">Referenzen</span>
+          <h1 className="text-4xl md:text-5xl font-bold text-slate-800 mb-4">
+            Unsere <span className="text-[#2c7a7b]">Referenzen</span>
           </h1>
-          <p className="text-xl text-slate-400 max-w-2xl mx-auto">
+          <p className="text-xl text-slate-600 max-w-2xl mx-auto">
             Ausgewählte Projekte und erfolgreiche Galvanisierungen
           </p>
         </div>
