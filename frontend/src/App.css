@@ -1,5 +1,6 @@
 .App {
   min-height: 100vh;
+  background: linear-gradient(to bottom, #ffffff 0%, #f8fafc 100%);
 }
 
 /* Smooth scrolling */
@@ -13,16 +14,16 @@ html {
 }
 
 ::-webkit-scrollbar-track {
-  background: #0f172a;
+  background: #f1f5f9;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #14b8a6;
+  background: #2c7a7b;
   border-radius: 6px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #0d9488;
+  background: #285e61;
 }
 
 /* Animation for elements */
@@ -64,6 +65,6 @@ input:focus,
 textarea:focus,
 select:focus {
   outline: none;
-  border-color: #14b8a6;
-  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.1);
+  border-color: #2c7a7b;
+  box-shadow: 0 0 0 3px rgba(44, 122, 123, 0.1);
 }
