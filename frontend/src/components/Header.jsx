@@ -18,7 +18,7 @@ const Header = () => {
   const isActive = (path) => location.pathname === path;
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-md border-b border-teal-500/20">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-[#2c7a7b]/20 shadow-sm">
       <nav className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
           {/* Logo */}
@@ -29,8 +29,8 @@ const Header = () => {
               className="h-12 w-12 transition-transform duration-300 group-hover:scale-110"
             />
             <div className="flex flex-col">
-              <span className="text-2xl font-bold text-white tracking-tight">Kathodik</span>
-              <span className="text-xs text-teal-400 tracking-widest">GALVANOTECHNIK</span>
+              <span className="text-2xl font-bold text-slate-800 tracking-tight">Kathodik</span>
+              <span className="text-xs text-[#2c7a7b] tracking-widest font-semibold">GALVANOTECHNIK</span>
             </div>
           </Link>
 
@@ -42,8 +42,8 @@ const Header = () => {
                 to={item.href}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
                   isActive(item.href)
-                    ? 'bg-teal-500/20 text-teal-400 shadow-lg shadow-teal-500/20'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-800/50'
+                    ? 'bg-[#2c7a7b] text-white shadow-lg shadow-[#2c7a7b]/20'
+                    : 'text-slate-700 hover:text-[#2c7a7b] hover:bg-slate-100'
                 }`}
               >
                 {item.name}
@@ -55,7 +55,7 @@ const Header = () => {
           <Button
             variant="ghost"
             size="icon"
-            className="md:hidden text-white hover:bg-slate-800"
+            className="md:hidden text-slate-700 hover:bg-slate-100"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           >
             {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
@@ -64,7 +64,7 @@ const Header = () => {
 
         {/* Mobile Navigation */}
         {mobileMenuOpen && (
-          <div className="md:hidden py-4 space-y-2 border-t border-teal-500/20">
+          <div className="md:hidden py-4 space-y-2 border-t border-[#2c7a7b]/20">
             {navigation.map((item) => (
               <Link
                 key={item.name}
@@ -72,8 +72,8 @@ const Header = () => {
                 onClick={() => setMobileMenuOpen(false)}
                 className={`block px-4 py-3 rounded-lg text-sm font-medium transition-all duration-300 ${
                   isActive(item.href)
-                    ? 'bg-teal-500/20 text-teal-400'
-                    : 'text-slate-300 hover:bg-slate-800/50 hover:text-white'
+                    ? 'bg-[#2c7a7b] text-white'
+                    : 'text-slate-700 hover:bg-slate-100 hover:text-[#2c7a7b]'
                 }`}
               >
                 {item.name}
