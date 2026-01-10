@@ -13,7 +13,7 @@ import './App.css';
 function App() {
   return (
     <BrowserRouter>
-      <div className="App min-h-screen bg-slate-900">
+      <div className="App min-h-screen bg-gradient-to-b from-white to-slate-50">
         <Header />
         <main className="pt-20">
           <Routes>
