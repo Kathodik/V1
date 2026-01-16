@@ -13,6 +13,7 @@ const Header = () => {
     { name: '3D Konfigurator', href: '/3d-configurator' },
     { name: 'Referenzen', href: '/references' },
     { name: 'Kontakt', href: '/contact' },
+    { name: 'Kundenportal', href: '/portal/login' },
     { name: 'Impressum', href: '/imprint' }
   ];
 
