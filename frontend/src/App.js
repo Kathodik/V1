@@ -5,6 +5,7 @@ import Header from './components/Header';
 import Footer from './components/Footer';
 import Home from './pages/Home';
 import Services from './pages/Services';
+import ThreeDConfigurator from './pages/ThreeDConfigurator';
 import References from './pages/References';
 import Contact from './pages/Contact';
 import Imprint from './pages/Imprint';
@@ -19,6 +20,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/services" element={<Services />} />
+            <Route path="/3d-configurator" element={<ThreeDConfigurator />} />
             <Route path="/references" element={<References />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/imprint" element={<Imprint />} />
