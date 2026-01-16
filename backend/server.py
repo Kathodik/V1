@@ -72,6 +72,82 @@ async def get_status_checks():
     
     return status_checks
 
+# Chat AI endpoints
+@api_router.post("/chat", response_model=ChatResponse)
+async def chat(message: ChatMessage):
+    """Send message to AI chatbot"""
+    try:
+        response = await chat_service.send_message(message.session_id, message.message)
+        return ChatResponse(response=response, session_id=message.session_id)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/chat/history/{session_id}")
+async def get_chat_history(session_id: str):
+    """Get chat history for a session"""
+    try:
+        history = await chat_service.get_chat_history(session_id)
+        return {"messages": history}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.delete("/chat/history/{session_id}")
+async def clear_chat_history(session_id: str):
+    """Clear chat history"""
+    try:
+        await chat_service.clear_history(session_id)
+        return {"message": "Chat history cleared"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# 3D Model endpoints
+@api_router.post("/3d-models", response_model=ThreeDModel)
+async def create_3d_model(model: ThreeDModelCreate):
+    """Create a 3D model configuration"""
+    model_dict = model.dict()
+    model_obj = ThreeDModel(**model_dict)
+    await db.threed_models.insert_one(model_obj.dict())
+    return model_obj
+
+@api_router.get("/3d-models/{model_id}", response_model=ThreeDModel)
+async def get_3d_model(model_id: str):
+    """Get a 3D model by ID"""
+    model = await db.threed_models.find_one({"id": model_id})
+    if not model:
+        raise HTTPException(status_code=404, detail="Model not found")
+    return ThreeDModel(**model)
+
+@api_router.get("/3d-models", response_model=List[ThreeDModel])
+async def list_3d_models(email: Optional[str] = None):
+    """List all 3D models, optionally filtered by email"""
+    query = {"customer_email": email} if email else {}
+    models = await db.threed_models.find(query).sort("created_at", -1).to_list(100)
+    return [ThreeDModel(**model) for model in models]
+
+# Print Request endpoints
+@api_router.post("/print-requests", response_model=PrintRequest)
+async def create_print_request(request: PrintRequestCreate):
+    """Create a print request to partner company"""
+    request_dict = request.dict()
+    request_obj = PrintRequest(**request_dict)
+    await db.print_requests.insert_one(request_obj.dict())
+    return request_obj
+
+@api_router.get("/print-requests/{request_id}", response_model=PrintRequest)
+async def get_print_request(request_id: str):
+    """Get a print request by ID"""
+    request = await db.print_requests.find_one({"id": request_id})
+    if not request:
+        raise HTTPException(status_code=404, detail="Request not found")
+    return PrintRequest(**request)
+
+@api_router.get("/print-requests", response_model=List[PrintRequest])
+async def list_print_requests(email: Optional[str] = None):
+    """List all print requests, optionally filtered by email"""
+    query = {"customer_email": email} if email else {}
+    requests = await db.print_requests.find(query).sort("created_at", -1).to_list(100)
+    return [PrintRequest(**req) for req in requests]
+
 # Include the router in the main app
 app.include_router(api_router)
 
