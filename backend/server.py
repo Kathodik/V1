@@ -157,6 +157,115 @@ async def list_print_requests(email: Optional[str] = None):
     requests = await db.print_requests.find(query).sort("created_at", -1).to_list(100)
     return [PrintRequest(**req) for req in requests]
 
+# Auth helper function
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> User:
+    """Get current authenticated user"""
+    token = credentials.credentials
+    payload = decode_access_token(token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    
+    email = payload.get("sub")
+    if not email:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    
+    user_doc = await db.users.find_one({"email": email})
+    if not user_doc:
+        raise HTTPException(status_code=401, detail="User not found")
+    
+    return User(**user_doc)
+
+# Auth endpoints
+@api_router.post("/auth/register", response_model=Token)
+async def register(user_data: UserCreate):
+    """Register a new user"""
+    # Check if user exists
+    existing_user = await db.users.find_one({"email": user_data.email})
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    # Create user
+    user_dict = user_data.dict(exclude={"password"})
+    user_dict["password_hash"] = get_password_hash(user_data.password)
+    user_dict["is_admin"] = False
+    user_obj = User(**user_dict)
+    
+    await db.users.insert_one({**user_obj.dict(), "password_hash": user_dict["password_hash"]})
+    
+    # Create token
+    access_token = create_access_token(data={"sub": user_obj.email})
+    
+    return Token(access_token=access_token, user=user_obj)
+
+@api_router.post("/auth/login", response_model=Token)
+async def login(credentials: UserLogin):
+    """Login user"""
+    user_doc = await db.users.find_one({"email": credentials.email})
+    if not user_doc or not verify_password(credentials.password, user_doc.get("password_hash", "")):
+        raise HTTPException(status_code=401, detail="Incorrect email or password")
+    
+    user = User(**user_doc)
+    access_token = create_access_token(data={"sub": user.email})
+    
+    return Token(access_token=access_token, user=user)
+
+@api_router.get("/auth/me", response_model=User)
+async def get_me(current_user: User = Depends(get_current_user)):
+    """Get current user info"""
+    return current_user
+
+# Order endpoints
+@api_router.post("/orders", response_model=Order)
+async def create_order(order: OrderCreate, current_user: User = Depends(get_current_user)):
+    """Create a new order"""
+    order_dict = order.dict()
+    order_dict["customer_email"] = current_user.email
+    order_dict["customer_name"] = current_user.name
+    order_obj = Order(**order_dict)
+    await db.orders.insert_one(order_obj.dict())
+    return order_obj
+
+@api_router.get("/orders", response_model=List[Order])
+async def list_orders(current_user: User = Depends(get_current_user)):
+    """List orders for current user"""
+    query = {"customer_email": current_user.email}
+    if current_user.is_admin:
+        query = {}  # Admin sees all orders
+    
+    orders = await db.orders.find(query).sort("created_at", -1).to_list(100)
+    return [Order(**order) for order in orders]
+
+@api_router.get("/orders/{order_id}", response_model=Order)
+async def get_order(order_id: str, current_user: User = Depends(get_current_user)):
+    """Get a specific order"""
+    order = await db.orders.find_one({"id": order_id})
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    # Check if user owns the order or is admin
+    if order["customer_email"] != current_user.email and not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    return Order(**order)
+
+@api_router.patch("/orders/{order_id}", response_model=Order)
+async def update_order(order_id: str, update: OrderUpdate, current_user: User = Depends(get_current_user)):
+    """Update order (admin only)"""
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    order = await db.orders.find_one({"id": order_id})
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    update_dict = {k: v for k, v in update.dict().items() if v is not None}
+    update_dict["updated_at"] = datetime.utcnow()
+    
+    await db.orders.update_one({"id": order_id}, {"$set": update_dict})
+    
+    updated_order = await db.orders.find_one({"id": order_id})
+    return Order(**updated_order)
+
 # Include the router in the main app
 app.include_router(api_router)
 
