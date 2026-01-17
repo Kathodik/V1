@@ -129,7 +129,7 @@ const Services = () => {
             </div>
 
             {/* Periodic Table Grid */}
-            <div className="relative z-10 grid grid-cols-4 gap-4" style={{ gridTemplateRows: 'repeat(3, 1fr)' }}>
+            <div className="relative z-10 grid grid-cols-5 gap-4" style={{ gridTemplateRows: 'repeat(3, 1fr)' }}>
               {metals.map((metal) => {
                 const pos = getMetalPosition(metal);
                 const isSelected = selectedMetal?.symbol === metal.symbol;
