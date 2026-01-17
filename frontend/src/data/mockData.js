@@ -2,31 +2,30 @@
 
 export const metals = [
   { 
-    symbol: 'Zn', 
-    name: 'Zink', 
-    atomicNumber: 30, 
-    color: '#c0c0d0', 
-    group: 12,
+    symbol: 'Cr', 
+    name: 'Chrom', 
+    atomicNumber: 24, 
+    color: '#e8e8e8',
+    group: 6,
     period: 4,
-    description: 'Korrosionsschutz, dekorative Beschichtung', 
-    applications: 'Automobilindustrie, Bauwesen, Maschinenbau',
+    description: 'Härte, Glanz, Korrosionsschutz', 
+    applications: 'Automobilindustrie, Sanitär, dekorative Anwendungen',
     finishes: [
-      { id: 'zn-standard', name: 'Standard', description: 'Klassische Verzinkung' },
-      { id: 'zn-yellow', name: 'Gelbchromatiert', description: 'Gelbe Passivierung' },
-      { id: 'zn-blue', name: 'Blauchromatiert', description: 'Blaue Passivierung' }
+      { id: 'cr-standard', name: 'Standard', description: 'Glanzchrom' },
+      { id: 'cr-black', name: 'Schwarzchrom', description: 'Schwarze Chromschicht' }
     ]
   },
   { 
-    symbol: 'Sn', 
-    name: 'Zinn', 
-    atomicNumber: 50, 
-    color: '#d4d4d4',
-    group: 14,
-    period: 5,
-    description: 'Korrosionsschutz, Lötbarkeit', 
-    applications: 'Lebensmittelindustrie, Elektronikindustrie',
+    symbol: 'Co', 
+    name: 'Cobalt', 
+    atomicNumber: 27, 
+    color: '#b0b0c0',
+    group: 9,
+    period: 4,
+    description: 'Verschleißschutz, Magnetismus, Härte', 
+    applications: 'Werkzeugbau, Magnettechnik, Hochtemperaturanwendungen',
     finishes: [
-      { id: 'sn-standard', name: 'Standard', description: 'Klassische Verzinnung' }
+      { id: 'co-standard', name: 'Standard', description: 'Klassische Cobaltbeschichtung' }
     ]
   },
   { 
@@ -60,43 +59,18 @@ export const metals = [
     ]
   },
   { 
-    symbol: 'Ag', 
-    name: 'Silber', 
-    atomicNumber: 47, 
-    color: '#c9c9c9',
-    group: 11,
-    period: 5,
-    description: 'Beste elektrische Leitfähigkeit, antibakteriell', 
-    applications: 'Elektronikindustrie, Schmuck, Medizintechnik',
-    finishes: [
-      { id: 'ag-standard', name: 'Standard', description: 'Klassische Versilberung' }
-    ]
-  },
-  { 
-    symbol: 'Cr', 
-    name: 'Chrom', 
-    atomicNumber: 24, 
-    color: '#e8e8e8',
-    group: 6,
+    symbol: 'Zn', 
+    name: 'Zink', 
+    atomicNumber: 30, 
+    color: '#c0c0d0', 
+    group: 12,
     period: 4,
-    description: 'Härte, Glanz, Korrosionsschutz', 
-    applications: 'Automobilindustrie, Sanitär, dekorative Anwendungen',
+    description: 'Korrosionsschutz, dekorative Beschichtung', 
+    applications: 'Automobilindustrie, Bauwesen, Maschinenbau',
     finishes: [
-      { id: 'cr-standard', name: 'Standard', description: 'Glanzchrom' },
-      { id: 'cr-black', name: 'Schwarzchrom', description: 'Schwarze Chromschicht' }
-    ]
-  },
-  { 
-    symbol: 'Au', 
-    name: 'Gold', 
-    atomicNumber: 79, 
-    color: '#ffd700',
-    group: 11,
-    period: 6,
-    description: 'Korrosionsbeständig, hohe Leitfähigkeit', 
-    applications: 'Elektronikindustrie, Schmuck, Kontakttechnik',
-    finishes: [
-      { id: 'au-standard', name: 'Standard', description: 'Klassische Vergoldung' }
+      { id: 'zn-standard', name: 'Standard', description: 'Klassische Verzinkung' },
+      { id: 'zn-yellow', name: 'Gelbchromatiert', description: 'Gelbe Passivierung' },
+      { id: 'zn-blue', name: 'Blauchromatiert', description: 'Blaue Passivierung' }
     ]
   },
   { 
@@ -110,6 +84,20 @@ export const metals = [
     applications: 'Schmuck, Elektronikindustrie, dekorative Anwendungen',
     finishes: [
       { id: 'ru-standard', name: 'Standard', description: 'Ruthenium-Beschichtung' }
+    ]
+  },
+  { 
+    symbol: 'Rh', 
+    name: 'Rhodium', 
+    atomicNumber: 45, 
+    color: '#e0e0e8',
+    group: 9,
+    period: 5,
+    description: 'Extrem hart, reflektierend, anlaufbeständig', 
+    applications: 'Schmuck (Weißgold), Spiegel, Elektronikindustrie, Katalysatoren',
+    finishes: [
+      { id: 'rh-standard', name: 'Standard', description: 'Hochglanz-Rhodiumbeschichtung' },
+      { id: 'rh-black', name: 'Schwarz', description: 'Schwarze Rhodiumbeschichtung' }
     ]
   },
   { 
@@ -127,6 +115,32 @@ export const metals = [
     ]
   },
   { 
+    symbol: 'Ag', 
+    name: 'Silber', 
+    atomicNumber: 47, 
+    color: '#c9c9c9',
+    group: 11,
+    period: 5,
+    description: 'Beste elektrische Leitfähigkeit, antibakteriell', 
+    applications: 'Elektronikindustrie, Schmuck, Medizintechnik',
+    finishes: [
+      { id: 'ag-standard', name: 'Standard', description: 'Klassische Versilberung' }
+    ]
+  },
+  { 
+    symbol: 'Sn', 
+    name: 'Zinn', 
+    atomicNumber: 50, 
+    color: '#d4d4d4',
+    group: 14,
+    period: 5,
+    description: 'Korrosionsschutz, Lötbarkeit', 
+    applications: 'Lebensmittelindustrie, Elektronikindustrie',
+    finishes: [
+      { id: 'sn-standard', name: 'Standard', description: 'Klassische Verzinnung' }
+    ]
+  },
+  { 
     symbol: 'Pt', 
     name: 'Platin', 
     atomicNumber: 78, 
@@ -140,17 +154,16 @@ export const metals = [
     ]
   },
   { 
-    symbol: 'Rh', 
-    name: 'Rhodium', 
-    atomicNumber: 45, 
-    color: '#e0e0e8',
-    group: 9,
-    period: 5,
-    description: 'Extrem hart, reflektierend, anlaufbeständig', 
-    applications: 'Schmuck (Weißgold), Spiegel, Elektronikindustrie, Katalysatoren',
+    symbol: 'Au', 
+    name: 'Gold', 
+    atomicNumber: 79, 
+    color: '#ffd700',
+    group: 11,
+    period: 6,
+    description: 'Korrosionsbeständig, hohe Leitfähigkeit', 
+    applications: 'Elektronikindustrie, Schmuck, Kontakttechnik',
     finishes: [
-      { id: 'rh-standard', name: 'Standard', description: 'Hochglanz-Rhodiumbeschichtung' },
-      { id: 'rh-black', name: 'Schwarz', description: 'Schwarze Rhodiumbeschichtung' }
+      { id: 'au-standard', name: 'Standard', description: 'Klassische Vergoldung' }
     ]
   }
 ];
