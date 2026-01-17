@@ -22,7 +22,7 @@ const Footer = () => {
               </div>
             </div>
             <p className="text-slate-600 text-sm leading-relaxed">
-              Ihr Partner für professionelle Lohngalvanisierung. Präzision und Qualität seit Jahren.
+              Ihr Partner für professionelle Lohngalvanisierung. Präzision und Qualität aus Leidenschaft.
             </p>
           </div>
 
