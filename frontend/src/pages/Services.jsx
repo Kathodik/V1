@@ -68,9 +68,12 @@ const Services = () => {
       'Cu': { row: 1, col: 3 },
       'Zn': { row: 1, col: 4 },
       'Ru': { row: 2, col: 1 },
-      'Ag': { row: 2, col: 3 },
-      'Sn': { row: 2, col: 4 },
-      'Au': { row: 3, col: 3 }
+      'Rh': { row: 2, col: 2 },
+      'Pd': { row: 2, col: 3 },
+      'Ag': { row: 2, col: 4 },
+      'Sn': { row: 2, col: 5 },
+      'Pt': { row: 3, col: 3 },
+      'Au': { row: 3, col: 4 }
     };
     return positions[metal.symbol] || { row: 1, col: 1 };
   };
