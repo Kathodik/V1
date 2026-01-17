@@ -97,22 +97,28 @@ const Services = () => {
         {/* Periodic Table with 3D Background */}
         <div className="mb-12 relative">
           <div 
-            className="max-w-5xl mx-auto relative"
+            className="max-w-6xl mx-auto relative bg-white/30 backdrop-blur-sm rounded-2xl p-8 border-2 border-slate-200 shadow-xl"
             onMouseMove={handleMouseMove}
-            style={{ perspective: '1000px' }}
+            style={{ perspective: '1500px' }}
           >
+            {/* Title */}
+            <div className="text-center mb-6">
+              <h2 className="text-2xl font-bold text-slate-800 mb-2">Periodensystem der Galvanisierung</h2>
+              <p className="text-sm text-slate-600">Wählen Sie ein Metall durch Klick auf das Element</p>
+            </div>
+
             {/* 3D Background Metal Object */}
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden rounded-2xl">
               <div 
                 className="w-96 h-96 transition-all duration-700 ease-out"
                 style={{
                   transform: `
-                    perspective(1000px) 
-                    rotateX(${(mousePosition.y - 0.5) * -20}deg) 
-                    rotateY(${(mousePosition.x - 0.5) * 20}deg)
-                    scale(${selectedMetal ? 1.2 : 0.8})
+                    perspective(1500px) 
+                    rotateX(${(mousePosition.y - 0.5) * -15}deg) 
+                    rotateY(${(mousePosition.x - 0.5) * 15}deg)
+                    scale(${selectedMetal ? 1.1 : 0.7})
                   `,
-                  opacity: selectedMetal ? 1 : 0.3,
+                  opacity: selectedMetal ? 0.9 : 0.2,
                   transformStyle: 'preserve-3d'
                 }}
               >
@@ -133,16 +139,16 @@ const Services = () => {
             </div>
 
             {/* Periodic Table Grid */}
-            <div className="relative z-10 grid grid-cols-5 gap-4" style={{ gridTemplateRows: 'repeat(3, 1fr)' }}>
+            <div className="relative z-10 grid grid-cols-5 gap-4 mt-4" style={{ gridTemplateRows: 'repeat(3, 1fr)' }}>
               {metals.map((metal) => {
                 const pos = getMetalPosition(metal);
                 const isSelected = selectedMetal?.symbol === metal.symbol;
                 const distance = Math.sqrt(
-                  Math.pow((pos.col - 2.5) / 2.5, 2) + 
+                  Math.pow((pos.col - 3) / 3, 2) + 
                   Math.pow((pos.row - 2) / 2, 2)
                 );
-                const parallaxX = (mousePosition.x - 0.5) * 30 * (1 - distance);
-                const parallaxY = (mousePosition.y - 0.5) * 30 * (1 - distance);
+                const parallaxX = (mousePosition.x - 0.5) * 20 * (1 - distance);
+                const parallaxY = (mousePosition.y - 0.5) * 20 * (1 - distance);
 
                 return (
                   <div
@@ -155,36 +161,36 @@ const Services = () => {
                     }}
                   >
                     <Card
-                      className={`cursor-pointer transition-all duration-500 backdrop-blur-sm ${
+                      className={`cursor-pointer transition-all duration-500 backdrop-blur-md ${
                         isSelected
-                          ? 'bg-[#2c7a7b]/90 border-[#2c7a7b] scale-110 shadow-2xl shadow-[#2c7a7b]/50'
-                          : 'bg-white/60 border-slate-300/50 hover:bg-white/80 hover:border-[#2c7a7b]/50 hover:scale-105 hover:shadow-xl'
+                          ? 'bg-[#2c7a7b] border-2 border-[#2c7a7b] scale-110 shadow-2xl shadow-[#2c7a7b]/60'
+                          : 'bg-white/80 border-2 border-slate-300 hover:bg-white/95 hover:border-[#2c7a7b]/70 hover:scale-105 hover:shadow-xl'
                       }`}
                       onClick={() => handleMetalSelect(metal)}
                       style={{
                         transform: `
-                          ${isSelected ? 'translateZ(20px)' : 'translateZ(0px)'}
-                          rotateX(${(mousePosition.y - 0.5) * -5}deg)
-                          rotateY(${(mousePosition.x - 0.5) * 5}deg)
+                          ${isSelected ? 'translateZ(30px)' : 'translateZ(0px)'}
+                          rotateX(${(mousePosition.y - 0.5) * -3}deg)
+                          rotateY(${(mousePosition.x - 0.5) * 3}deg)
                         `,
                         transformStyle: 'preserve-3d'
                       }}
                     >
-                      <CardContent className="p-6 text-center">
-                        <div className={`text-xs mb-1 font-medium ${isSelected ? 'text-white/80' : 'text-slate-500'}`}>
+                      <CardContent className="p-5 text-center">
+                        <div className={`text-xs mb-1 font-semibold ${isSelected ? 'text-white/90' : 'text-slate-500'}`}>
                           {metal.atomicNumber}
                         </div>
-                        <div className={`text-4xl font-bold mb-1 ${isSelected ? 'text-white' : 'text-slate-800'}`}>
+                        <div className={`text-4xl font-bold mb-1 tracking-tight ${isSelected ? 'text-white' : 'text-slate-800'}`}>
                           {metal.symbol}
                         </div>
-                        <div className={`text-sm ${isSelected ? 'text-white/90' : 'text-slate-600'}`}>
+                        <div className={`text-sm font-medium ${isSelected ? 'text-white/95' : 'text-slate-600'}`}>
                           {metal.name}
                         </div>
                         <div 
-                          className="w-full h-2 rounded-full mt-3" 
+                          className="w-full h-2.5 rounded-full mt-3 shadow-inner" 
                           style={{ 
-                            backgroundColor: isSelected ? 'rgba(255,255,255,0.4)' : metal.color,
-                            boxShadow: isSelected ? `0 0 10px ${metal.color}` : 'none'
+                            backgroundColor: isSelected ? 'rgba(255,255,255,0.5)' : metal.color,
+                            boxShadow: isSelected ? `0 0 15px ${metal.color}` : 'inset 0 2px 4px rgba(0,0,0,0.1)'
                           }}
                         ></div>
                       </CardContent>
@@ -194,10 +200,22 @@ const Services = () => {
               })}
             </div>
 
+            {/* Legend */}
             <div className="mt-6 text-center">
-              <p className="text-sm text-slate-500">
-                * Vereinfachtes Periodensystem - nur galvanisierfähige Metalle
-              </p>
+              <div className="inline-flex items-center space-x-2 bg-white/60 backdrop-blur-sm px-4 py-2 rounded-lg border border-slate-300">
+                <div className="flex items-center space-x-1">
+                  <div className="w-3 h-3 rounded-full bg-slate-400"></div>
+                  <span className="text-xs text-slate-600">Periode 4</span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <div className="w-3 h-3 rounded-full bg-slate-500"></div>
+                  <span className="text-xs text-slate-600">Periode 5</span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <div className="w-3 h-3 rounded-full bg-slate-600"></div>
+                  <span className="text-xs text-slate-600">Periode 6</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
