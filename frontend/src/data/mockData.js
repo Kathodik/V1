@@ -111,6 +111,47 @@ export const metals = [
     finishes: [
       { id: 'ru-standard', name: 'Standard', description: 'Ruthenium-Beschichtung' }
     ]
+  },
+  { 
+    symbol: 'Pd', 
+    name: 'Palladium', 
+    atomicNumber: 46, 
+    color: '#c0c0c8',
+    group: 10,
+    period: 5,
+    description: 'Korrosionsbeständig, katalytisch aktiv, hypoallergen', 
+    applications: 'Elektronikindustrie, Schmuck, Katalysatoren, Medizintechnik',
+    finishes: [
+      { id: 'pd-standard', name: 'Standard', description: 'Klassische Palladiumbeschichtung' },
+      { id: 'pd-bright', name: 'Glanz', description: 'Hochglänzende Oberfläche' }
+    ]
+  },
+  { 
+    symbol: 'Pt', 
+    name: 'Platin', 
+    atomicNumber: 78, 
+    color: '#d0d0d8',
+    group: 10,
+    period: 6,
+    description: 'Extrem korrosionsbeständig, hohe Beständigkeit, edel', 
+    applications: 'Schmuck, Laborgeräte, Katalysatoren, Hochtemperaturanwendungen',
+    finishes: [
+      { id: 'pt-standard', name: 'Standard', description: 'Klassische Platinbeschichtung' }
+    ]
+  },
+  { 
+    symbol: 'Rh', 
+    name: 'Rhodium', 
+    atomicNumber: 45, 
+    color: '#e0e0e8',
+    group: 9,
+    period: 5,
+    description: 'Extrem hart, reflektierend, anlaufbeständig', 
+    applications: 'Schmuck (Weißgold), Spiegel, Elektronikindustrie, Katalysatoren',
+    finishes: [
+      { id: 'rh-standard', name: 'Standard', description: 'Hochglanz-Rhodiumbeschichtung' },
+      { id: 'rh-black', name: 'Schwarz', description: 'Schwarze Rhodiumbeschichtung' }
+    ]
   }
 ];
 
