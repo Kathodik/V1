@@ -60,18 +60,22 @@ const Services = () => {
     setMousePosition({ x, y });
   };
 
-  // Get metal grid position
+  // Get metal grid position - organized by groups (columns in periodic table)
   const getMetalPosition = (metal) => {
     const positions = {
+      // Period 4
       'Cr': { row: 1, col: 1 },
-      'Ni': { row: 1, col: 2 },
-      'Cu': { row: 1, col: 3 },
-      'Zn': { row: 1, col: 4 },
+      'Co': { row: 1, col: 2 },
+      'Ni': { row: 1, col: 3 },
+      'Cu': { row: 1, col: 4 },
+      'Zn': { row: 1, col: 5 },
+      // Period 5
       'Ru': { row: 2, col: 1 },
       'Rh': { row: 2, col: 2 },
       'Pd': { row: 2, col: 3 },
       'Ag': { row: 2, col: 4 },
       'Sn': { row: 2, col: 5 },
+      // Period 6
       'Pt': { row: 3, col: 3 },
       'Au': { row: 3, col: 4 }
     };
