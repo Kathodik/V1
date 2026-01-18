@@ -1,4 +1,4 @@
-from emergentintegrations.llm.chat import LlmChat, UserMessage
+from openai import AsyncOpenAI
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 from datetime import datetime
@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Use Emergent LLM Key with OpenAI
 EMERGENT_LLM_KEY = os.environ.get('EMERGENT_LLM_KEY')
 MONGO_URL = os.environ['MONGO_URL']
 DB_NAME = os.environ['DB_NAME']
@@ -46,8 +47,15 @@ class ChatService:
     def __init__(self):
         self.api_key = EMERGENT_LLM_KEY
         if not self.api_key:
-            print("[ChatService] WARNING: EMERGENT_LLM_KEY not set, using fallback")
-            self.api_key = "sk-emergent-fallback"
+            print("[ChatService] WARNING: EMERGENT_LLM_KEY not set")
+            self.api_key = "sk-fallback"
+        
+        # Initialize OpenAI client with Emergent base URL
+        self.openai_client = AsyncOpenAI(
+            api_key=self.api_key,
+            base_url="https://llm.emergent.sh/v1"
+        )
+        print("[ChatService] Initialized with direct OpenAI API")
     
     async def send_message(self, session_id: str, message: str) -> str:
         """Send a message and get AI response"""
@@ -55,30 +63,41 @@ class ChatService:
             print(f"[ChatService] Processing message for session {session_id}")
             print(f"[ChatService] Message: {message[:100]}...")
             
-            # Create a new chat instance - without session_id in constructor
-            chat = LlmChat(
-                api_key=self.api_key,
-                system_message=SYSTEM_MESSAGE
+            # Get chat history
+            history = await self.get_chat_history(session_id)
+            
+            # Build messages array
+            messages = [{"role": "system", "content": SYSTEM_MESSAGE}]
+            
+            # Add history
+            for msg in history[-10:]:  # Last 10 messages for context
+                messages.append({
+                    "role": msg["role"],
+                    "content": msg["content"]
+                })
+            
+            # Add current message
+            messages.append({"role": "user", "content": message})
+            
+            print(f"[ChatService] Sending to OpenAI with {len(messages)} messages...")
+            
+            # Call OpenAI API
+            response = await self.openai_client.chat.completions.create(
+                model="gpt-4o",
+                messages=messages,
+                temperature=0.7,
+                max_tokens=1000
             )
             
-            # Configure to use OpenAI gpt-4o  
-            chat = chat.with_model("openai", "gpt-4o")
+            assistant_message = response.choices[0].message.content
             
-            # Create user message
-            user_message = UserMessage(text=message)
-            
-            print(f"[ChatService] Sending message to LLM...")
-            
-            # Send message
-            response = await chat.send_message(user_message)
-            
-            print(f"[ChatService] Received response: {response[:100] if response else 'None'}...")
+            print(f"[ChatService] Received response: {assistant_message[:100]}...")
             
             # Save to database
             await self.save_message(session_id, "user", message)
-            await self.save_message(session_id, "assistant", response)
+            await self.save_message(session_id, "assistant", assistant_message)
             
-            return response
+            return assistant_message
             
         except Exception as e:
             error_msg = str(e)
@@ -86,8 +105,7 @@ class ChatService:
             import traceback
             traceback.print_exc()
             
-            # Return a user-friendly error message
-            return "Entschuldigung, ich hatte ein technisches Problem. Bitte versuchen Sie es erneut."
+            return "Entschuldigung, ich hatte ein technisches Problem. Bitte versuchen Sie es erneut oder kontaktieren Sie uns direkt."
     
     async def get_chat_history(self, session_id: str):
         """Get chat history from database"""
