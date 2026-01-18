@@ -103,6 +103,25 @@ const Header = () => {
                 {item.name}
               </Link>
             ))}
+            
+            {/* Mobile Login/Portal Button */}
+            <Link 
+              to={user ? '/portal' : '/portal/login'}
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              <Button 
+                className="w-full bg-[#2c7a7b] hover:bg-[#285e61] text-white mt-2"
+              >
+                {user ? (
+                  <>Portal: {user.name}</>
+                ) : (
+                  <>
+                    <LogIn className="h-4 w-4 mr-2" />
+                    Anmelden
+                  </>
+                )}
+              </Button>
+            </Link>
           </div>
         )}
       </nav>
