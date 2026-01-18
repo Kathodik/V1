@@ -222,7 +222,7 @@ const AIThreeDConfigurator = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white to-slate-50 py-20">
+    <div className="min-h-screen bg-gradient-to-b from-white to-slate-50 py-20 pb-32">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
           <div className="inline-flex items-center space-x-2 mb-4">
