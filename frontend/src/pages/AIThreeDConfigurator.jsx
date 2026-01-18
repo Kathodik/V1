@@ -444,6 +444,26 @@ const AIThreeDConfigurator = () => {
 
                 {/* Input Area */}
                 <div className="border-t border-slate-200 p-4">
+                  {/* 3D Files Preview */}
+                  {uploaded3DFiles.length > 0 && (
+                    <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <p className="text-xs font-semibold text-blue-800 mb-2">📁 3D-Modelldateien:</p>
+                      <div className="space-y-1">
+                        {uploaded3DFiles.map((file, index) => (
+                          <div key={index} className="flex items-center justify-between bg-white p-2 rounded border border-blue-200">
+                            <span className="text-xs text-slate-700">{file.name} ({file.size})</span>
+                            <button
+                              onClick={() => remove3DFile(index)}
+                              className="text-red-500 hover:text-red-700 text-xs font-bold"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex items-end space-x-2">
                     <Button
                       type="button"
@@ -451,6 +471,7 @@ const AIThreeDConfigurator = () => {
                       size="icon"
                       onClick={() => fileInputRef.current?.click()}
                       className="flex-shrink-0 border-slate-300"
+                      title="Bilder hochladen"
                     >
                       <ImageIcon className="h-5 w-5" />
                     </Button>
@@ -462,17 +483,35 @@ const AIThreeDConfigurator = () => {
                       onChange={handleImageUpload}
                       className="hidden"
                     />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => modelFileInputRef.current?.click()}
+                      className="flex-shrink-0 border-slate-300 bg-blue-50"
+                      title="3D-Modelldateien hochladen"
+                    >
+                      <Upload className="h-5 w-5 text-blue-600" />
+                    </Button>
+                    <input
+                      ref={modelFileInputRef}
+                      type="file"
+                      multiple
+                      accept=".stl,.obj,.step,.stp,.iges,.igs,.3mf"
+                      onChange={handle3DFileUpload}
+                      className="hidden"
+                    />
                     <textarea
                       value={userInput}
                       onChange={(e) => setUserInput(e.target.value)}
                       onKeyPress={handleKeyPress}
-                      placeholder="Beschreiben Sie Ihr gewünschtes Teil..."
+                      placeholder="Beschreiben Sie Ihr gewünschtes Teil oder laden Sie 3D-Dateien hoch..."
                       className="flex-1 min-h-[60px] max-h-32 px-4 py-3 border-2 border-slate-300 rounded-lg resize-none focus:outline-none focus:border-[#2c7a7b]"
                       disabled={loading}
                     />
                     <Button
                       onClick={sendMessage}
-                      disabled={loading || (!userInput.trim() && uploadedImages.length === 0)}
+                      disabled={loading || (!userInput.trim() && uploadedImages.length === 0 && uploaded3DFiles.length === 0)}
                       className="flex-shrink-0 bg-[#2c7a7b] hover:bg-[#285e61] text-white"
                       size="icon"
                     >
@@ -480,7 +519,7 @@ const AIThreeDConfigurator = () => {
                     </Button>
                   </div>
                   <p className="text-xs text-slate-500 mt-2">
-                    💡 Tipp: Beschreiben Sie Form, Größe, Material und Verwendungszweck
+                    💡 Tipp: Laden Sie Ihre 3D-Dateien hoch (STL, OBJ, STEP) oder beschreiben Sie Form, Größe und Material
                   </p>
                 </div>
               </CardContent>
