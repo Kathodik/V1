@@ -7,7 +7,7 @@ import Footer from './components/Footer';
 import FloatingChatButton from './components/FloatingChatButton';
 import Home from './pages/Home';
 import Services from './pages/Services';
-import ThreeDConfigurator from './pages/ThreeDConfigurator';
+import AIThreeDConfigurator from './pages/AIThreeDConfigurator';
 import References from './pages/References';
 import Contact from './pages/Contact';
 import Imprint from './pages/Imprint';
@@ -25,7 +25,7 @@ function App() {
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/services" element={<Services />} />
-              <Route path="/3d-configurator" element={<ThreeDConfigurator />} />
+              <Route path="/3d-configurator" element={<AIThreeDConfigurator />} />
               <Route path="/references" element={<References />} />
               <Route path="/contact" element={<Contact />} />
               <Route path="/imprint" element={<Imprint />} />
