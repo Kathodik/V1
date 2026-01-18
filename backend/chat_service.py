@@ -3,7 +3,6 @@ from motor.motor_asyncio import AsyncIOMotorClient
 import os
 from datetime import datetime
 from dotenv import load_dotenv
-import asyncio
 
 load_dotenv()
 
@@ -46,59 +45,79 @@ Sei professionell, präzise und hilfsbereit. Antworte auf Deutsch."""
 class ChatService:
     def __init__(self):
         self.api_key = EMERGENT_LLM_KEY
+        if not self.api_key:
+            raise ValueError("EMERGENT_LLM_KEY not found in environment variables")
     
     async def send_message(self, session_id: str, message: str) -> str:
         """Send a message and get AI response"""
         try:
-            print(f"Processing message for session {session_id}: {message[:50]}...")
+            print(f"[ChatService] Processing message for session {session_id}")
+            print(f"[ChatService] Message: {message[:100]}...")
             
-            # Initialize chat
+            # Create a new chat instance for each request
             chat = LlmChat(
                 api_key=self.api_key,
+                session_id=session_id,
                 system_message=SYSTEM_MESSAGE
             )
             
-            # Set model
+            # Configure to use OpenAI gpt-4o
             chat = chat.with_model("openai", "gpt-4o")
             
             # Create user message
             user_message = UserMessage(text=message)
             
-            # Send message synchronously (emergentintegrations might not support async properly)
-            loop = asyncio.get_event_loop()
-            response = await loop.run_in_executor(None, lambda: chat.send_message(user_message))
+            print(f"[ChatService] Sending message to LLM...")
             
-            print(f"Got response: {response[:100] if response else 'None'}...")
+            # Send message - this should be awaited
+            response = await chat.send_message(user_message)
+            
+            print(f"[ChatService] Received response: {response[:100] if response else 'None'}...")
             
             # Save to database
             await self.save_message(session_id, "user", message)
             await self.save_message(session_id, "assistant", response)
             
             return response
+            
         except Exception as e:
-            print(f"Error in chat service: {str(e)}")
+            error_msg = str(e)
+            print(f"[ChatService] Error: {error_msg}")
             import traceback
             traceback.print_exc()
-            return "Entschuldigung, ich hatte ein technisches Problem. Bitte versuchen Sie es erneut oder formulieren Sie Ihre Frage anders."
+            
+            # Return a user-friendly error message
+            return "Entschuldigung, ich hatte ein technisches Problem. Bitte versuchen Sie es erneut."
     
     async def get_chat_history(self, session_id: str):
         """Get chat history from database"""
-        messages = await db.chat_messages.find(
-            {"session_id": session_id}
-        ).sort("timestamp", 1).limit(50).to_list(50)
-        return messages
+        try:
+            messages = await db.chat_messages.find(
+                {"session_id": session_id}
+            ).sort("timestamp", 1).limit(50).to_list(50)
+            return messages
+        except Exception as e:
+            print(f"[ChatService] Error getting history: {str(e)}")
+            return []
     
     async def save_message(self, session_id: str, role: str, content: str):
         """Save message to database"""
-        await db.chat_messages.insert_one({
-            "session_id": session_id,
-            "role": role,
-            "content": content,
-            "timestamp": datetime.utcnow()
-        })
+        try:
+            await db.chat_messages.insert_one({
+                "session_id": session_id,
+                "role": role,
+                "content": content,
+                "timestamp": datetime.utcnow()
+            })
+        except Exception as e:
+            print(f"[ChatService] Error saving message: {str(e)}")
     
     async def clear_history(self, session_id: str):
         """Clear chat history for a session"""
-        await db.chat_messages.delete_many({"session_id": session_id})
+        try:
+            await db.chat_messages.delete_many({"session_id": session_id})
+        except Exception as e:
+            print(f"[ChatService] Error clearing history: {str(e)}")
 
+# Initialize the service
 chat_service = ChatService()
