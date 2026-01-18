@@ -49,15 +49,11 @@ class ChatService:
     async def send_message(self, session_id: str, message: str) -> str:
         """Send a message and get AI response"""
         try:
-            # Get chat history from database
-            history = await self.get_chat_history(session_id)
-            
-            # Initialize chat
+            # Initialize chat with system message
             chat = LlmChat(
                 api_key=self.api_key,
-                session_id=session_id,
                 system_message=SYSTEM_MESSAGE
-            ).with_model("openai", "gpt-5.2")
+            ).with_model("openai", "gpt-4o")
             
             # Create user message
             user_message = UserMessage(text=message)
@@ -72,7 +68,9 @@ class ChatService:
             return response
         except Exception as e:
             print(f"Error in chat service: {str(e)}")
-            return f"Entschuldigung, es gab einen Fehler bei der Verarbeitung Ihrer Nachricht: {str(e)}"
+            import traceback
+            traceback.print_exc()
+            return f"Entschuldigung, es gab einen Fehler. Bitte versuchen Sie es erneut."
     
     async def get_chat_history(self, session_id: str):
         """Get chat history from database"""
