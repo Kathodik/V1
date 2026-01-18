@@ -41,6 +41,11 @@ const Footer = () => {
                 </Link>
               </li>
               <li>
+                <Link to="/3d-configurator" className="text-slate-600 hover:text-[#2c7a7b] text-sm transition-colors duration-300">
+                  3D Konfigurator
+                </Link>
+              </li>
+              <li>
                 <Link to="/references" className="text-slate-600 hover:text-[#2c7a7b] text-sm transition-colors duration-300">
                   Referenzen
                 </Link>
@@ -48,6 +53,11 @@ const Footer = () => {
               <li>
                 <Link to="/contact" className="text-slate-600 hover:text-[#2c7a7b] text-sm transition-colors duration-300">
                   Kontakt
+                </Link>
+              </li>
+              <li>
+                <Link to="/portal" className="text-slate-600 hover:text-[#2c7a7b] text-sm transition-colors duration-300 font-semibold">
+                  Kundenportal
                 </Link>
               </li>
               <li>
