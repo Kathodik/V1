@@ -54,12 +54,21 @@ class ChatService:
             print(f"[ChatService] Processing message for session {session_id}")
             print(f"[ChatService] Message: {message[:100]}...")
             
-            # Create a new chat instance for each request
-            chat = LlmChat(
-                api_key=self.api_key,
-                session_id=session_id,
-                system_message=SYSTEM_MESSAGE
-            )
+            # Create a new chat instance - session_id might need to be positional
+            # Try different initialization patterns
+            try:
+                # Pattern 1: session_id as keyword argument
+                chat = LlmChat(
+                    api_key=self.api_key,
+                    session_id=session_id,
+                    system_message=SYSTEM_MESSAGE
+                )
+            except TypeError:
+                # Pattern 2: Try without session_id
+                chat = LlmChat(
+                    api_key=self.api_key,
+                    system_message=SYSTEM_MESSAGE
+                )
             
             # Configure to use OpenAI gpt-4o
             chat = chat.with_model("openai", "gpt-4o")
@@ -69,7 +78,7 @@ class ChatService:
             
             print(f"[ChatService] Sending message to LLM...")
             
-            # Send message - this should be awaited
+            # Send message
             response = await chat.send_message(user_message)
             
             print(f"[ChatService] Received response: {response[:100] if response else 'None'}...")
