@@ -54,6 +54,40 @@ const AIThreeDConfigurator = () => {
     toast.success(`${files.length} Bild(er) hinzugefügt`);
   };
 
+  const handle3DFileUpload = (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length + uploaded3DFiles.length > 3) {
+      toast.error('Maximal 3 3D-Dateien erlaubt');
+      return;
+    }
+
+    const validExtensions = ['.stl', '.obj', '.step', '.stp', '.iges', '.igs', '.3mf'];
+    const invalidFiles = files.filter(file => {
+      const ext = '.' + file.name.split('.').pop().toLowerCase();
+      return !validExtensions.includes(ext);
+    });
+
+    if (invalidFiles.length > 0) {
+      toast.error('Nur STL, OBJ, STEP, IGES oder 3MF Dateien erlaubt');
+      return;
+    }
+
+    const newFiles = files.map(file => ({
+      file,
+      name: file.name,
+      size: (file.size / 1024 / 1024).toFixed(2) + ' MB'
+    }));
+
+    setUploaded3DFiles([...uploaded3DFiles, ...newFiles]);
+    toast.success(`${files.length} 3D-Datei(en) hinzugefügt`);
+  };
+
+  const remove3DFile = (index) => {
+    const newFiles = [...uploaded3DFiles];
+    newFiles.splice(index, 1);
+    setUploaded3DFiles(newFiles);
+  };
+
   const removeImage = (index) => {
     const newImages = [...uploadedImages];
     URL.revokeObjectURL(newImages[index].url);
