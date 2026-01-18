@@ -7,6 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const { user } = useAuth();
 
   const navigation = [
     { name: 'Home', href: '/' },
