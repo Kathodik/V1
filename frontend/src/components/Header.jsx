@@ -53,6 +53,26 @@ const Header = () => {
                 {item.name}
               </Link>
             ))}
+            
+            {/* Login/Portal Button */}
+            <Link to={user ? '/portal' : '/portal/login'}>
+              <Button 
+                size="sm"
+                className="ml-2 bg-[#2c7a7b] hover:bg-[#285e61] text-white shadow-md"
+              >
+                {user ? (
+                  <>
+                    <span className="hidden lg:inline">{user.name}</span>
+                    <span className="lg:hidden">Portal</span>
+                  </>
+                ) : (
+                  <>
+                    <LogIn className="h-4 w-4 mr-2" />
+                    Anmelden
+                  </>
+                )}
+              </Button>
+            </Link>
           </div>
 
           {/* Mobile menu button */}
