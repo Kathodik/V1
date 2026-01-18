@@ -3,6 +3,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 import os
 from datetime import datetime
 from dotenv import load_dotenv
+import asyncio
 
 load_dotenv()
 
@@ -49,17 +50,25 @@ class ChatService:
     async def send_message(self, session_id: str, message: str) -> str:
         """Send a message and get AI response"""
         try:
-            # Initialize chat with system message
+            print(f"Processing message for session {session_id}: {message[:50]}...")
+            
+            # Initialize chat
             chat = LlmChat(
                 api_key=self.api_key,
                 system_message=SYSTEM_MESSAGE
-            ).with_model("openai", "gpt-4o")
+            )
+            
+            # Set model
+            chat = chat.with_model("openai", "gpt-4o")
             
             # Create user message
             user_message = UserMessage(text=message)
             
-            # Send message and get response
-            response = await chat.send_message(user_message)
+            # Send message synchronously (emergentintegrations might not support async properly)
+            loop = asyncio.get_event_loop()
+            response = await loop.run_in_executor(None, lambda: chat.send_message(user_message))
+            
+            print(f"Got response: {response[:100] if response else 'None'}...")
             
             # Save to database
             await self.save_message(session_id, "user", message)
@@ -70,7 +79,7 @@ class ChatService:
             print(f"Error in chat service: {str(e)}")
             import traceback
             traceback.print_exc()
-            return f"Entschuldigung, es gab einen Fehler. Bitte versuchen Sie es erneut."
+            return "Entschuldigung, ich hatte ein technisches Problem. Bitte versuchen Sie es erneut oder formulieren Sie Ihre Frage anders."
     
     async def get_chat_history(self, session_id: str):
         """Get chat history from database"""
