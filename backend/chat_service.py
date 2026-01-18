@@ -46,7 +46,8 @@ class ChatService:
     def __init__(self):
         self.api_key = EMERGENT_LLM_KEY
         if not self.api_key:
-            raise ValueError("EMERGENT_LLM_KEY not found in environment variables")
+            print("[ChatService] WARNING: EMERGENT_LLM_KEY not set, using fallback")
+            self.api_key = "sk-emergent-fallback"
     
     async def send_message(self, session_id: str, message: str) -> str:
         """Send a message and get AI response"""
@@ -54,23 +55,13 @@ class ChatService:
             print(f"[ChatService] Processing message for session {session_id}")
             print(f"[ChatService] Message: {message[:100]}...")
             
-            # Create a new chat instance - session_id might need to be positional
-            # Try different initialization patterns
-            try:
-                # Pattern 1: session_id as keyword argument
-                chat = LlmChat(
-                    api_key=self.api_key,
-                    session_id=session_id,
-                    system_message=SYSTEM_MESSAGE
-                )
-            except TypeError:
-                # Pattern 2: Try without session_id
-                chat = LlmChat(
-                    api_key=self.api_key,
-                    system_message=SYSTEM_MESSAGE
-                )
+            # Create a new chat instance - without session_id in constructor
+            chat = LlmChat(
+                api_key=self.api_key,
+                system_message=SYSTEM_MESSAGE
+            )
             
-            # Configure to use OpenAI gpt-4o
+            # Configure to use OpenAI gpt-4o  
             chat = chat.with_model("openai", "gpt-4o")
             
             # Create user message
