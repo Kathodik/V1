@@ -120,6 +120,9 @@ const AIThreeDConfigurator = () => {
       if (uploadedImages.length > 0) {
         aiPrompt += `\n\n[Hinweis: Der Kunde hat ${uploadedImages.length} Bild(er) hochgeladen, um sein gewünschtes Teil zu zeigen.]`;
       }
+      if (uploaded3DFiles.length > 0) {
+        aiPrompt += `\n\n[Hinweis: Der Kunde hat ${uploaded3DFiles.length} 3D-Modelldatei(en) hochgeladen: ${uploaded3DFiles.map(f => f.name).join(', ')}. Diese können direkt für die Galvanisierung verwendet werden.]`;
+      }
 
       // Send to AI
       const response = await axios.post(`${API}/chat`, {
