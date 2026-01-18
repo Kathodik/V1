@@ -21,11 +21,13 @@ const AIThreeDConfigurator = () => {
   ]);
   const [userInput, setUserInput] = useState('');
   const [uploadedImages, setUploadedImages] = useState([]);
+  const [uploaded3DFiles, setUploaded3DFiles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [currentConfig, setCurrentConfig] = useState(null);
   const [rotation, setRotation] = useState({ x: 0, y: 0 });
   const [sessionId] = useState(`ai-3d-config-${Date.now()}`);
   const fileInputRef = useRef(null);
+  const modelFileInputRef = useRef(null);
 
   // Contact info for final submission
   const [contactInfo, setContactInfo] = useState({
