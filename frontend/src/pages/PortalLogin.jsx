@@ -45,13 +45,36 @@ const PortalLogin = () => {
   const handleRegister = async (e) => {
     e.preventDefault();
 
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(registerData.email)) {
+      toast.error('Bitte geben Sie eine gültige E-Mail-Adresse ein');
+      return;
+    }
+
+    // Validate name
+    if (registerData.name.trim().length < 2) {
+      toast.error('Name muss mindestens 2 Zeichen lang sein');
+      return;
+    }
+
     if (registerData.password !== registerData.confirmPassword) {
       toast.error('Passwörter stimmen nicht überein');
       return;
     }
 
-    if (registerData.password.length < 6) {
-      toast.error('Passwort muss mindestens 6 Zeichen lang sein');
+    if (registerData.password.length < 8) {
+      toast.error('Passwort muss mindestens 8 Zeichen lang sein');
+      return;
+    }
+
+    // Check password strength
+    const hasUpperCase = /[A-Z]/.test(registerData.password);
+    const hasLowerCase = /[a-z]/.test(registerData.password);
+    const hasNumbers = /\d/.test(registerData.password);
+    
+    if (!hasUpperCase || !hasLowerCase || !hasNumbers) {
+      toast.error('Passwort muss Groß- und Kleinbuchstaben sowie Zahlen enthalten');
       return;
     }
 
@@ -65,7 +88,7 @@ const PortalLogin = () => {
     );
     
     if (result.success) {
-      toast.success('Erfolgreich registriert!');
+      toast.success('Erfolgreich registriert! Willkommen bei Kathodik.');
       navigate('/portal');
     } else {
       toast.error(result.error || 'Registrierung fehlgeschlagen');
