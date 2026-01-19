@@ -226,7 +226,7 @@ const PortalLogin = () => {
 
                     <div>
                       <Label htmlFor="register-password" className="text-slate-800 mb-2 block">
-                        Passwort * (min. 6 Zeichen)
+                        Passwort * (min. 8 Zeichen)
                       </Label>
                       <Input
                         id="register-password"
@@ -236,9 +236,12 @@ const PortalLogin = () => {
                         placeholder="••••••••"
                         className="bg-white border-slate-300"
                         required
-                        minLength={6}
+                        minLength={8}
                         disabled={loading}
                       />
+                      <p className="text-xs text-slate-500 mt-1">
+                        Muss Groß- und Kleinbuchstaben sowie Zahlen enthalten
+                      </p>
                     </div>
 
                     <div>
