@@ -35,10 +35,13 @@ const Home = () => {
               />
             </div>
             <h1 className="text-5xl md:text-7xl font-bold text-slate-800 mb-6 leading-tight">
-              Präzise <span className="text-[#2c7a7b]">Galvanotechnik</span>
+              <span className="text-[#2c7a7b]">Kathodik.</span> Weil Ihr Lieblingsstück die Kathode ist.
             </h1>
-            <p className="text-xl md:text-2xl text-slate-600 mb-8 leading-relaxed">
-              Ihr Partner für professionelle Lohngalvanisierung. Hochwertige Metallbeschichtungen für Ihre Produkte.
+            <p className="text-xl md:text-2xl text-slate-600 mb-4 leading-relaxed font-semibold">
+              Wir schauen, was sich machen lässt –
+            </p>
+            <p className="text-xl md:text-2xl text-slate-600 mb-8 leading-relaxed font-semibold">
+              und liefern, was sich sehen lässt.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link to="/services">
