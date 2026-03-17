@@ -88,6 +88,9 @@ class ChatService:
 
         except Exception as e:
             logger.error(f"Chat error: {e}", exc_info=True)
+            error_str = str(e)
+            if "budget" in error_str.lower() or "exceeded" in error_str.lower():
+                return "Entschuldigung, der KI-Dienst ist voruebergehend nicht verfuegbar. Bitte kontaktieren Sie uns direkt unter Service@Kathodik.com oder 01626431168."
             raise
 
     async def _get_db_history(self, session_id: str):
