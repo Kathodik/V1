@@ -57,11 +57,11 @@ export const AuthProvider = ({ children }) => {
   const register = async (email, password, name, phone) => {
     try {
       const response = await axios.post(`${API}/auth/register`, { email, password, name, phone });
-      const { access_token, user: userData } = response.data;
+      const { access_token, user: userData, verification_required } = response.data;
       setToken(access_token);
       setUser(userData);
       localStorage.setItem('token', access_token);
-      return { success: true };
+      return { success: true, verification_required };
     } catch (error) {
       return { success: false, error: error.response?.data?.detail || 'Registration failed' };
     }

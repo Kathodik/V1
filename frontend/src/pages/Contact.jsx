@@ -4,9 +4,13 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
-import { Phone, Mail, MapPin, Send } from 'lucide-react';
+import { Phone, Mail, MapPin, Send, Loader2 } from 'lucide-react';
 import { companyInfo } from '../data/mockData';
 import { toast } from 'sonner';
+import axios from 'axios';
+
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const API = `${BACKEND_URL}/api`;
 
 const Contact = () => {
   const [formData, setFormData] = useState({
@@ -15,11 +19,21 @@ const Contact = () => {
     phone: '',
     message: ''
   });
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    toast.success('Nachricht erfolgreich gesendet! Wir melden uns zeitnah bei Ihnen.');
-    setFormData({ name: '', email: '', phone: '', message: '' });
+    setLoading(true);
+    try {
+      await axios.post(`${API}/contact`, formData);
+      toast.success('Nachricht erfolgreich gesendet! Wir melden uns zeitnah bei Ihnen.');
+      setFormData({ name: '', email: '', phone: '', message: '' });
+    } catch (error) {
+      console.error('Error sending contact form:', error);
+      toast.error(error.response?.data?.detail || 'Fehler beim Senden der Nachricht');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleChange = (e) => {
@@ -180,9 +194,20 @@ const Contact = () => {
                 <Button 
                   type="submit" 
                   className="w-full bg-[#2c7a7b] hover:bg-[#285e61] text-white py-6 text-lg transition-all duration-300 hover:scale-105"
+                  disabled={loading}
+                  data-testid="contact-submit-btn"
                 >
-                  Nachricht senden
-                  <Send className="ml-2 h-5 w-5" />
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      Wird gesendet...
+                    </>
+                  ) : (
+                    <>
+                      Nachricht senden
+                      <Send className="ml-2 h-5 w-5" />
+                    </>
+                  )}
                 </Button>
               </form>
             </CardContent>

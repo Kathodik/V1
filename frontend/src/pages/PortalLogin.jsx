@@ -1,18 +1,25 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { LogIn, UserPlus, Loader2 } from 'lucide-react';
+import { LogIn, UserPlus, Loader2, MailCheck, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'sonner';
+import axios from 'axios';
+
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const API = `${BACKEND_URL}/api`;
 
 const PortalLogin = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { login, register } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [verificationSent, setVerificationSent] = useState(false);
+  const [verificationSuccess, setVerificationSuccess] = useState(false);
 
   // Login state
   const [loginData, setLoginData] = useState({ email: '', password: '' });
@@ -25,6 +32,24 @@ const PortalLogin = () => {
     name: '',
     phone: ''
   });
+
+  // Handle verification token from URL
+  useEffect(() => {
+    const verifyToken = searchParams.get('verify');
+    if (verifyToken) {
+      verifyEmail(verifyToken);
+    }
+  }, [searchParams]);
+
+  const verifyEmail = async (token) => {
+    try {
+      await axios.post(`${API}/auth/verify-email?token=${token}`);
+      setVerificationSuccess(true);
+      toast.success('E-Mail erfolgreich verifiziert! Sie koennen sich jetzt anmelden.');
+    } catch (error) {
+      toast.error('Verifizierung fehlgeschlagen. Bitte versuchen Sie es erneut.');
+    }
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -88,8 +113,13 @@ const PortalLogin = () => {
     );
     
     if (result.success) {
-      toast.success('Erfolgreich registriert! Willkommen bei Kathodik.');
-      navigate('/portal');
+      if (result.verification_required) {
+        setVerificationSent(true);
+        toast.success('Registrierung erfolgreich! Bitte pruefen Sie Ihre E-Mail zur Verifizierung.');
+      } else {
+        toast.success('Erfolgreich registriert! Willkommen bei Kathodik.');
+        navigate('/portal');
+      }
     } else {
       toast.error(result.error || 'Registrierung fehlgeschlagen');
     }
@@ -111,7 +141,36 @@ const PortalLogin = () => {
             <p className="text-slate-600">Verwalten Sie Ihre Aufträge und Anfragen</p>
           </div>
 
-          <Card className="bg-white border-slate-300">
+          {verificationSuccess && (
+            <Card className="bg-green-50 border-green-300 mb-6">
+              <CardContent className="p-6 text-center">
+                <CheckCircle2 className="h-12 w-12 text-green-600 mx-auto mb-3" />
+                <h3 className="text-lg font-bold text-green-800">E-Mail verifiziert!</h3>
+                <p className="text-green-700 text-sm mt-2">Sie koennen sich jetzt anmelden.</p>
+              </CardContent>
+            </Card>
+          )}
+
+          {verificationSent && (
+            <Card className="bg-blue-50 border-blue-300 mb-6">
+              <CardContent className="p-6 text-center">
+                <MailCheck className="h-12 w-12 text-blue-600 mx-auto mb-3" />
+                <h3 className="text-lg font-bold text-blue-800">Verifizierungs-E-Mail gesendet!</h3>
+                <p className="text-blue-700 text-sm mt-2">
+                  Bitte pruefen Sie Ihre E-Mail und klicken Sie auf den Verifizierungslink.
+                </p>
+                <Button
+                  variant="outline"
+                  className="mt-4 border-blue-300 text-blue-700"
+                  onClick={() => { setVerificationSent(false); navigate('/portal'); }}
+                >
+                  Weiter zum Portal
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
+          <Card className="bg-white border-slate-300" data-testid="portal-login-card">
             <CardContent className="p-6">
               <Tabs defaultValue="login" className="w-full">
                 <TabsList className="grid w-full grid-cols-2 mb-6">
