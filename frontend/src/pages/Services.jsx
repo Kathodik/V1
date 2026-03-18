@@ -12,39 +12,195 @@ import { useParallax } from '../hooks/useScrollAnimation';
 import { metals, companyInfo } from '../data/mockData';
 import { toast } from 'sonner';
 
-/* ── realistic metallic CSS gradients per element ── */
-const metalGradients = {
-  Cr: `linear-gradient(135deg, #f0f0f0 0%, #c8c8c8 20%, #f8f8f8 40%, #b0b0b0 60%, #e8e8e8 80%, #d0d0d0 100%)`,
-  Co: `linear-gradient(135deg, #a8afc8 0%, #8890a8 20%, #bfc6dd 40%, #7880a0 60%, #a0a8c0 80%, #9098b0 100%)`,
-  Ni: `linear-gradient(135deg, #e0ddd5 0%, #c0bdb5 20%, #eae8e0 40%, #b0ada5 60%, #d0cdc5 80%, #c8c5bd 100%)`,
-  Cu: `linear-gradient(135deg, #e8a882 0%, #c07050 20%, #f0c0a0 35%, #b86848 50%, #d09070 65%, #c88060 80%, #e0a080 100%)`,
-  Zn: `linear-gradient(135deg, #d0d0d8 0%, #b0b0c0 20%, #e0e0e8 40%, #a0a0b0 60%, #c8c8d0 80%, #b8b8c8 100%)`,
-  Ru: `linear-gradient(135deg, #98a8b8 0%, #7888a0 20%, #a8b8c8 40%, #687888 60%, #8898a8 80%, #7888a0 100%)`,
-  Rh: `linear-gradient(135deg, #f0f0f8 0%, #d0d0e0 20%, #ffffff 40%, #c0c0d0 60%, #e8e8f0 80%, #d8d8e0 100%)`,
-  Pd: `linear-gradient(135deg, #dddde5 0%, #b8b8c8 20%, #ececf0 40%, #a8a8b8 60%, #d0d0d8 80%, #c0c0c8 100%)`,
-  Ag: `linear-gradient(135deg, #f0f0f0 0%, #c8c8c8 15%, #ffffff 30%, #b0b0b0 50%, #e8e8e8 65%, #d8d8d8 80%, #f0f0f0 100%)`,
-  Sn: `linear-gradient(135deg, #d8d8d0 0%, #b0b0a8 20%, #e8e8e0 40%, #c0c0b8 60%, #d0d0c8 80%, #c8c8c0 100%)`,
-  Pt: `linear-gradient(135deg, #e8e8f0 0%, #c8c8d8 20%, #f0f0f8 35%, #b8b8c8 50%, #e0e0e8 65%, #d0d0d8 80%, #dcdce4 100%)`,
-  Au: `linear-gradient(135deg, #ffd700 0%, #c8a000 15%, #ffe44d 30%, #b89000 45%, #ffd000 60%, #e0b800 75%, #ffc800 100%)`,
+/* ── Per-element realistic texture config ── */
+const metalTextures = {
+  Cr: {
+    // Chrome: mirror-polished, extremely reflective
+    bg: `
+      linear-gradient(135deg, #eef0f2 0%, #c4c6c8 18%, #f6f8fa 32%, #a8aaac 50%, #e8eaec 68%, #d0d2d4 82%, #f0f2f4 100%)
+    `,
+    overlay: `
+      radial-gradient(ellipse 70% 50% at 30% 25%, rgba(255,255,255,0.65) 0%, transparent 60%),
+      linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.08) 49%, transparent 49.5%, rgba(255,255,255,0.08) 50%, transparent 100%)
+    `,
+    edge: '#b0b2b4',
+    textColor: 'rgba(50,50,55,0.7)',
+    textShadow: '1px 1px 0 rgba(255,255,255,0.8)',
+    glow: 'rgba(200,205,210,0.4)',
+    label: 'Hochglanz',
+  },
+  Co: {
+    // Cobalt: dark bluish steel, slight magnetic shimmer
+    bg: `
+      linear-gradient(150deg, #8088a0 0%, #606878 18%, #98a0b8 34%, #505868 50%, #7880a0 68%, #687090 82%, #8890a8 100%)
+    `,
+    overlay: `
+      radial-gradient(ellipse 60% 45% at 35% 28%, rgba(160,180,220,0.4) 0%, transparent 60%),
+      repeating-linear-gradient(135deg, transparent 0px, transparent 3px, rgba(255,255,255,0.03) 3px, rgba(255,255,255,0.03) 4px)
+    `,
+    edge: '#4a5268',
+    textColor: 'rgba(220,225,240,0.85)',
+    textShadow: '1px 1px 2px rgba(0,0,0,0.5)',
+    glow: 'rgba(100,110,150,0.4)',
+    label: 'Stahlblau',
+  },
+  Ni: {
+    // Nickel: warm silver-white, satin-brushed
+    bg: `
+      linear-gradient(140deg, #dddad0 0%, #c5c2b8 20%, #ece9e0 38%, #b5b2a8 55%, #d8d5cc 72%, #cac7be 88%, #e0ddd4 100%)
+    `,
+    overlay: `
+      radial-gradient(ellipse 65% 50% at 32% 30%, rgba(255,255,245,0.45) 0%, transparent 55%),
+      repeating-linear-gradient(180deg, transparent 0px, transparent 1px, rgba(255,255,250,0.06) 1px, rgba(255,255,250,0.06) 2px)
+    `,
+    edge: '#a8a59c',
+    textColor: 'rgba(60,55,45,0.65)',
+    textShadow: '1px 1px 0 rgba(255,255,250,0.6)',
+    glow: 'rgba(180,175,165,0.35)',
+    label: 'Seidenmatt',
+  },
+  Cu: {
+    // Copper: rich warm reddish-brown, hammered patina
+    bg: `
+      linear-gradient(140deg, #d4855a 0%, #a85830 15%, #e8a878 30%, #924820 45%, #c87850 58%, #b06838 72%, #d89068 85%, #c07848 100%)
+    `,
+    overlay: `
+      radial-gradient(ellipse 55% 45% at 28% 25%, rgba(255,200,150,0.45) 0%, transparent 55%),
+      radial-gradient(circle at 70% 65%, rgba(120,50,20,0.15) 0%, transparent 40%),
+      repeating-conic-gradient(rgba(255,255,255,0.02) 0deg, transparent 3deg, rgba(255,255,255,0.02) 6deg)
+    `,
+    edge: '#884020',
+    textColor: 'rgba(60,20,5,0.75)',
+    textShadow: '1px 1px 0 rgba(255,180,120,0.5)',
+    glow: 'rgba(200,120,80,0.4)',
+    label: 'Kupferton',
+  },
+  Zn: {
+    // Zinc: blue-grey, crystalline/spangle texture
+    bg: `
+      linear-gradient(145deg, #c5c8d5 0%, #a5a8b8 18%, #d8dbe8 35%, #959ab0 52%, #c0c5d5 70%, #b0b5c5 85%, #ccd0dd 100%)
+    `,
+    overlay: `
+      radial-gradient(ellipse 60% 50% at 30% 28%, rgba(220,225,240,0.45) 0%, transparent 55%),
+      conic-gradient(from 45deg at 60% 50%, transparent 0deg, rgba(255,255,255,0.04) 30deg, transparent 60deg, rgba(255,255,255,0.03) 90deg, transparent 120deg, rgba(255,255,255,0.04) 180deg, transparent 210deg, rgba(255,255,255,0.03) 270deg, transparent 300deg, rgba(255,255,255,0.04) 360deg)
+    `,
+    edge: '#8a8d9d',
+    textColor: 'rgba(40,45,60,0.7)',
+    textShadow: '1px 1px 0 rgba(220,225,240,0.6)',
+    glow: 'rgba(160,165,185,0.35)',
+    label: 'Kristallin',
+  },
+  Ru: {
+    // Ruthenium: dark gunmetal, dense, cold
+    bg: `
+      linear-gradient(135deg, #7a8898 0%, #586878 18%, #8a98a8 34%, #485868 50%, #6a7888 68%, #5a6878 82%, #7a8898 100%)
+    `,
+    overlay: `
+      radial-gradient(ellipse 55% 45% at 35% 25%, rgba(150,170,195,0.35) 0%, transparent 55%),
+      repeating-linear-gradient(160deg, transparent 0px, transparent 2px, rgba(255,255,255,0.025) 2px, rgba(255,255,255,0.025) 3px)
+    `,
+    edge: '#3a4858',
+    textColor: 'rgba(200,215,230,0.85)',
+    textShadow: '1px 1px 2px rgba(0,0,0,0.5)',
+    glow: 'rgba(90,105,125,0.4)',
+    label: 'Gunmetal',
+  },
+  Rh: {
+    // Rhodium: brilliant white-silver, most reflective metal
+    bg: `
+      linear-gradient(130deg, #f4f5fa 0%, #d5d8e5 15%, #ffffff 30%, #c8cce0 48%, #f0f2f8 65%, #dddfe8 80%, #f8f9fc 100%)
+    `,
+    overlay: `
+      radial-gradient(ellipse 70% 55% at 28% 22%, rgba(255,255,255,0.7) 0%, transparent 55%),
+      linear-gradient(135deg, transparent 40%, rgba(255,255,255,0.15) 50%, transparent 60%)
+    `,
+    edge: '#b8bcc8',
+    textColor: 'rgba(50,55,70,0.6)',
+    textShadow: '1px 1px 0 rgba(255,255,255,0.9)',
+    glow: 'rgba(210,215,230,0.5)',
+    label: 'Spiegelglanz',
+  },
+  Pd: {
+    // Palladium: soft cool silver-white, subtle warmth
+    bg: `
+      linear-gradient(140deg, #d8dae5 0%, #b5b8c8 18%, #eaecf2 35%, #a5a8b8 52%, #d0d2dd 70%, #c0c2cd 85%, #e0e2ea 100%)
+    `,
+    overlay: `
+      radial-gradient(ellipse 65% 48% at 30% 27%, rgba(240,242,255,0.5) 0%, transparent 58%),
+      repeating-linear-gradient(90deg, transparent 0px, transparent 4px, rgba(255,255,255,0.03) 4px, rgba(255,255,255,0.03) 5px)
+    `,
+    edge: '#95989a',
+    textColor: 'rgba(45,48,60,0.65)',
+    textShadow: '1px 1px 0 rgba(240,242,255,0.7)',
+    glow: 'rgba(175,180,200,0.4)',
+    label: 'Sanft-Silber',
+  },
+  Ag: {
+    // Silver: classic bright silver, polished with slight tarnish edge
+    bg: `
+      linear-gradient(135deg, #f2f2f0 0%, #c0c0be 12%, #fafaf8 28%, #a8a8a6 45%, #e8e8e6 62%, #d0d0ce 78%, #f5f5f3 100%)
+    `,
+    overlay: `
+      radial-gradient(ellipse 75% 55% at 25% 20%, rgba(255,255,252,0.65) 0%, transparent 55%),
+      radial-gradient(circle at 75% 80%, rgba(180,178,170,0.12) 0%, transparent 35%),
+      linear-gradient(45deg, transparent 45%, rgba(255,255,255,0.12) 50%, transparent 55%)
+    `,
+    edge: '#a0a09e',
+    textColor: 'rgba(50,50,48,0.65)',
+    textShadow: '1px 1px 0 rgba(255,255,252,0.8)',
+    glow: 'rgba(200,200,198,0.45)',
+    label: 'Hochglanz',
+  },
+  Sn: {
+    // Tin: dull grey-silver, matte, almost waxy
+    bg: `
+      linear-gradient(145deg, #d0cec6 0%, #b0aea6 20%, #e0ded6 38%, #a8a69e 55%, #cccac2 72%, #bab8b0 88%, #d8d6ce 100%)
+    `,
+    overlay: `
+      radial-gradient(ellipse 60% 50% at 32% 30%, rgba(240,238,230,0.35) 0%, transparent 55%),
+      repeating-linear-gradient(170deg, transparent 0px, transparent 2px, rgba(200,198,190,0.08) 2px, rgba(200,198,190,0.08) 3px)
+    `,
+    edge: '#908e86',
+    textColor: 'rgba(55,55,48,0.65)',
+    textShadow: '1px 1px 0 rgba(240,238,230,0.5)',
+    glow: 'rgba(175,173,165,0.3)',
+    label: 'Matt-Satin',
+  },
+  Pt: {
+    // Platinum: dense cool grey-white, heavy, prestigious
+    bg: `
+      linear-gradient(138deg, #e2e4ec 0%, #c0c4d2 15%, #f0f2f8 30%, #b0b4c2 48%, #dde0ea 65%, #c8ccd8 80%, #e8eaf0 100%)
+    `,
+    overlay: `
+      radial-gradient(ellipse 68% 50% at 28% 24%, rgba(245,248,255,0.55) 0%, transparent 55%),
+      linear-gradient(120deg, transparent 42%, rgba(255,255,255,0.1) 50%, transparent 58%),
+      repeating-linear-gradient(0deg, transparent 0px, transparent 3px, rgba(255,255,255,0.02) 3px, rgba(255,255,255,0.02) 4px)
+    `,
+    edge: '#9a9eb0',
+    textColor: 'rgba(40,44,60,0.6)',
+    textShadow: '1px 1px 0 rgba(245,248,255,0.75)',
+    glow: 'rgba(190,195,215,0.45)',
+    label: 'Platin-Glanz',
+  },
+  Au: {
+    // Gold: warm, rich, unmistakable yellow-gold
+    bg: `
+      linear-gradient(140deg, #ffd700 0%, #c49800 12%, #ffe55c 26%, #a88200 40%, #ffd200 54%, #d4a800 68%, #ffdf30 82%, #c8a000 100%)
+    `,
+    overlay: `
+      radial-gradient(ellipse 60% 50% at 25% 22%, rgba(255,250,180,0.55) 0%, transparent 50%),
+      radial-gradient(circle at 70% 70%, rgba(150,100,0,0.1) 0%, transparent 35%),
+      linear-gradient(135deg, transparent 40%, rgba(255,255,200,0.18) 50%, transparent 60%)
+    `,
+    edge: '#8a6800',
+    textColor: 'rgba(90,60,0,0.8)',
+    textShadow: '1px 1px 0 rgba(255,240,130,0.6)',
+    glow: 'rgba(255,200,0,0.4)',
+    label: 'Gold-Glanz',
+  },
 };
 
-/* ── Metallic specular highlight overlay ── */
-const metalSpecular = {
-  Cr: 'rgba(255,255,255,0.5)',
-  Co: 'rgba(200,210,240,0.35)',
-  Ni: 'rgba(255,255,250,0.4)',
-  Cu: 'rgba(255,220,200,0.35)',
-  Zn: 'rgba(220,220,240,0.4)',
-  Ru: 'rgba(180,200,220,0.3)',
-  Rh: 'rgba(255,255,255,0.55)',
-  Pd: 'rgba(240,240,255,0.4)',
-  Ag: 'rgba(255,255,255,0.6)',
-  Sn: 'rgba(240,240,230,0.35)',
-  Pt: 'rgba(240,240,255,0.45)',
-  Au: 'rgba(255,240,100,0.4)',
-};
-
-/* ── Period label ── */
+/* ── Period labels ── */
 const periodLabels = { 4: 'Periode 4', 5: 'Periode 5', 6: 'Periode 6' };
 
 /* ── 3D Element Cube Component ── */
@@ -52,13 +208,14 @@ const ElementCube = ({ metal, isSelected, onClick, index }) => {
   const [hover, setHover] = useState(false);
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
   const cubeRef = useRef(null);
+  const tex = metalTextures[metal.symbol] || metalTextures.Cr;
 
   const handleMouseMove = (e) => {
     if (!cubeRef.current) return;
     const rect = cubeRef.current.getBoundingClientRect();
     const x = (e.clientX - rect.left) / rect.width - 0.5;
     const y = (e.clientY - rect.top) / rect.height - 0.5;
-    setTilt({ x: y * -20, y: x * 20 });
+    setTilt({ x: y * -18, y: x * 18 });
   };
 
   const handleMouseLeave = () => {
@@ -66,17 +223,11 @@ const ElementCube = ({ metal, isSelected, onClick, index }) => {
     setHover(false);
   };
 
-  const gradient = metalGradients[metal.symbol] || metalGradients.Cr;
-  const specular = metalSpecular[metal.symbol] || 'rgba(255,255,255,0.3)';
-
   return (
     <div
       ref={cubeRef}
       className="cursor-pointer group"
-      style={{
-        perspective: '800px',
-        animationDelay: `${index * 60}ms`,
-      }}
+      style={{ perspective: '800px' }}
       onMouseMove={handleMouseMove}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={handleMouseLeave}
@@ -89,133 +240,72 @@ const ElementCube = ({ metal, isSelected, onClick, index }) => {
           isSelected
             ? 'shadow-[0_0_40px_rgba(44,122,123,0.5)] ring-2 ring-[#2c7a7b]'
             : hover
-            ? 'shadow-[0_20px_60px_rgba(0,0,0,0.15)]'
+            ? 'shadow-[0_20px_60px_rgba(0,0,0,0.18)]'
             : 'shadow-[0_8px_30px_rgba(0,0,0,0.08)]'
         }`}
         style={{
-          transform: `rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) ${isSelected ? 'scale(1.08)' : hover ? 'scale(1.04)' : 'scale(1)'}`,
+          transform: `rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) ${isSelected ? 'scale(1.08)' : hover ? 'scale(1.05)' : 'scale(1)'}`,
           transformStyle: 'preserve-3d',
           transition: 'transform 0.4s cubic-bezier(0.22,1,0.36,1), box-shadow 0.4s ease',
-          background: 'linear-gradient(145deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.7) 100%)',
+          background: 'linear-gradient(145deg, rgba(255,255,255,0.95) 0%, rgba(245,245,248,0.85) 100%)',
           backdropFilter: 'blur(12px)',
-          border: '1px solid rgba(255,255,255,0.8)',
+          border: '1px solid rgba(255,255,255,0.9)',
         }}
       >
         {/* Glass reflection */}
-        <div
-          className="absolute inset-0 rounded-xl pointer-events-none"
-          style={{
-            background: 'linear-gradient(135deg, rgba(255,255,255,0.4) 0%, transparent 50%, rgba(255,255,255,0.1) 100%)',
-            zIndex: 2,
-          }}
-        />
+        <div className="absolute inset-0 rounded-xl pointer-events-none" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.4) 0%, transparent 50%, rgba(255,255,255,0.05) 100%)', zIndex: 3 }} />
 
-        <div className="p-4 relative z-[1]">
+        <div className="p-3.5 relative z-[1]">
           {/* Atomic number */}
-          <div className="text-[10px] font-bold text-slate-400 mb-1.5 tracking-wider">
-            {metal.atomicNumber}
-          </div>
+          <div className="text-[10px] font-bold text-slate-400 mb-1 tracking-wider">{metal.atomicNumber}</div>
 
-          {/* Metal cube */}
-          <div className="flex justify-center mb-3" style={{ perspective: '500px' }}>
+          {/* Metal cube – the centrepiece */}
+          <div className="flex justify-center mb-2.5" style={{ perspective: '500px' }}>
             <div
-              className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-lg transition-transform duration-500"
+              className="relative w-[72px] h-[72px] sm:w-[88px] sm:h-[88px] rounded-lg transition-transform duration-500"
               style={{
-                transform: `rotateX(${tilt.x * 0.5}deg) rotateY(${tilt.y * 0.5}deg)`,
+                transform: `rotateX(${tilt.x * 0.4}deg) rotateY(${tilt.y * 0.4}deg)`,
                 transformStyle: 'preserve-3d',
               }}
             >
-              {/* Main face - metallic texture */}
-              <div
-                className="absolute inset-0 rounded-lg"
-                style={{
-                  background: gradient,
-                  boxShadow: `
-                    inset 0 1px 2px ${specular},
-                    inset 0 -2px 4px rgba(0,0,0,0.15),
-                    0 4px 12px rgba(0,0,0,0.12)
-                  `,
-                }}
-              >
-                {/* Specular highlight */}
-                <div
-                  className="absolute rounded-lg"
-                  style={{
-                    top: '8%',
-                    left: '15%',
-                    width: '50%',
-                    height: '35%',
-                    background: `radial-gradient(ellipse, ${specular} 0%, transparent 70%)`,
-                    filter: 'blur(2px)',
-                  }}
-                />
-                {/* Symbol engraving */}
+              {/* Main face – unique metallic texture */}
+              <div className="absolute inset-0 rounded-lg overflow-hidden" style={{
+                background: tex.bg,
+                boxShadow: `inset 0 1px 3px ${tex.glow}, inset 0 -2px 5px rgba(0,0,0,0.18), 0 6px 16px rgba(0,0,0,0.14)`,
+              }}>
+                {/* Texture overlay (brushed lines, grain, specular) */}
+                <div className="absolute inset-0 rounded-lg" style={{ background: tex.overlay }} />
+                {/* Symbol */}
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span
-                    className="text-2xl sm:text-3xl font-black tracking-tight"
-                    style={{
-                      color: metal.symbol === 'Au' ? '#7a5800' : 'rgba(0,0,0,0.55)',
-                      textShadow: `1px 1px 0 ${specular}`,
-                    }}
-                  >
+                  <span className="text-[26px] sm:text-[32px] font-black tracking-tight" style={{ color: tex.textColor, textShadow: tex.textShadow }}>
                     {metal.symbol}
                   </span>
                 </div>
               </div>
 
-              {/* Right edge – 3D depth */}
-              <div
-                className="absolute top-[3px] rounded-r-lg"
-                style={{
-                  right: '-5px',
-                  width: '5px',
-                  height: 'calc(100% - 3px)',
-                  background: `linear-gradient(to right, ${metal.color}cc, ${metal.color}88)`,
-                  transform: 'skewY(-3deg)',
-                  borderRadius: '0 4px 4px 0',
-                }}
-              />
-              {/* Bottom edge – 3D depth */}
-              <div
-                className="absolute left-[3px] rounded-b-lg"
-                style={{
-                  bottom: '-5px',
-                  height: '5px',
-                  width: 'calc(100% - 3px)',
-                  background: `linear-gradient(to bottom, ${metal.color}cc, ${metal.color}88)`,
-                  transform: 'skewX(-3deg)',
-                  borderRadius: '0 0 4px 4px',
-                }}
-              />
+              {/* Right 3D edge */}
+              <div className="absolute top-[3px] rounded-r-lg" style={{ right: '-6px', width: '6px', height: 'calc(100% - 3px)', background: `linear-gradient(to right, ${tex.edge}dd, ${tex.edge}88)`, transform: 'skewY(-3deg)', borderRadius: '0 4px 4px 0' }} />
+              {/* Bottom 3D edge */}
+              <div className="absolute left-[3px] rounded-b-lg" style={{ bottom: '-6px', height: '6px', width: 'calc(100% - 3px)', background: `linear-gradient(to bottom, ${tex.edge}dd, ${tex.edge}88)`, transform: 'skewX(-3deg)', borderRadius: '0 0 4px 4px' }} />
             </div>
           </div>
 
-          {/* Metal name */}
+          {/* Metal name + texture label */}
           <div className="text-center">
             <div className="text-sm font-bold text-slate-700 leading-tight">{metal.name}</div>
+            <div className="text-[9px] font-medium text-slate-400 tracking-wider uppercase mt-0.5">{tex.label}</div>
           </div>
 
-          {/* Finishes indicator */}
-          <div className="flex justify-center gap-1 mt-2">
+          {/* Finishes indicator dots */}
+          <div className="flex justify-center gap-1 mt-1.5">
             {metal.finishes.map((_, i) => (
-              <div
-                key={i}
-                className="w-1.5 h-1.5 rounded-full"
-                style={{ backgroundColor: isSelected ? '#2c7a7b' : '#cbd5e1' }}
-              />
+              <div key={i} className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: isSelected ? '#2c7a7b' : '#cbd5e1' }} />
             ))}
           </div>
         </div>
 
-        {/* Selection indicator glow */}
         {isSelected && (
-          <div
-            className="absolute -inset-[2px] rounded-xl pointer-events-none"
-            style={{
-              background: 'linear-gradient(135deg, rgba(44,122,123,0.15), transparent, rgba(44,122,123,0.1))',
-              zIndex: 0,
-            }}
-          />
+          <div className="absolute -inset-[2px] rounded-xl pointer-events-none" style={{ background: 'linear-gradient(135deg, rgba(44,122,123,0.15), transparent, rgba(44,122,123,0.1))' }} />
         )}
       </div>
     </div>
@@ -392,66 +482,33 @@ const Services = () => {
                       }}
                       onMouseLeave={() => setRotation({ x: 0, y: 0 })}
                     >
-                      <div
-                        className="w-48 h-48 rounded-2xl transition-transform duration-300 ease-out"
-                        style={{
-                          transform: `perspective(800px) rotateX(${rotation.x}deg) rotateY(${rotation.y}deg)`,
-                          transformStyle: 'preserve-3d',
-                          background: metalGradients[selectedMetal.symbol],
-                          boxShadow: `
-                            0 30px 80px ${selectedMetal.color}55,
-                            inset 0 2px 4px ${metalSpecular[selectedMetal.symbol]},
-                            inset 0 -3px 6px rgba(0,0,0,0.15)
-                          `,
-                        }}
-                      >
-                        {/* Specular highlight */}
-                        <div
-                          className="absolute rounded-2xl"
-                          style={{
-                            top: '10%',
-                            left: '15%',
-                            width: '55%',
-                            height: '35%',
-                            background: `radial-gradient(ellipse, ${metalSpecular[selectedMetal.symbol]} 0%, transparent 70%)`,
-                            filter: 'blur(4px)',
-                          }}
-                        />
-                        {/* Symbol */}
-                        <div className="w-full h-full flex items-center justify-center">
-                          <span
-                            className="text-6xl font-black"
+                      {(() => {
+                        const tex = metalTextures[selectedMetal.symbol] || metalTextures.Cr;
+                        return (
+                          <div
+                            className="w-48 h-48 rounded-2xl transition-transform duration-300 ease-out relative"
                             style={{
-                              color: selectedMetal.symbol === 'Au' ? '#7a5800' : 'rgba(0,0,0,0.45)',
-                              textShadow: `2px 2px 0 ${metalSpecular[selectedMetal.symbol]}`,
+                              transform: `perspective(800px) rotateX(${rotation.x}deg) rotateY(${rotation.y}deg)`,
+                              transformStyle: 'preserve-3d',
+                              background: tex.bg,
+                              boxShadow: `0 30px 80px ${tex.glow}, inset 0 2px 4px ${tex.glow}, inset 0 -3px 6px rgba(0,0,0,0.18)`,
                             }}
                           >
-                            {selectedMetal.symbol}
-                          </span>
-                        </div>
-                        {/* Bottom 3D edge */}
-                        <div
-                          className="absolute left-1 rounded-b-2xl"
-                          style={{
-                            bottom: '-8px',
-                            height: '8px',
-                            width: 'calc(100% - 4px)',
-                            background: `linear-gradient(to bottom, ${selectedMetal.color}cc, ${selectedMetal.color}66)`,
-                            transform: 'skewX(-2deg)',
-                          }}
-                        />
-                        {/* Right 3D edge */}
-                        <div
-                          className="absolute top-1 rounded-r-2xl"
-                          style={{
-                            right: '-8px',
-                            width: '8px',
-                            height: 'calc(100% - 4px)',
-                            background: `linear-gradient(to right, ${selectedMetal.color}cc, ${selectedMetal.color}66)`,
-                            transform: 'skewY(-2deg)',
-                          }}
-                        />
-                      </div>
+                            {/* Texture overlay */}
+                            <div className="absolute inset-0 rounded-2xl" style={{ background: tex.overlay }} />
+                            {/* Symbol */}
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <span className="text-6xl font-black" style={{ color: tex.textColor, textShadow: tex.textShadow }}>
+                                {selectedMetal.symbol}
+                              </span>
+                            </div>
+                            {/* Bottom 3D edge */}
+                            <div className="absolute left-1 rounded-b-2xl" style={{ bottom: '-8px', height: '8px', width: 'calc(100% - 4px)', background: `linear-gradient(to bottom, ${tex.edge}dd, ${tex.edge}88)`, transform: 'skewX(-2deg)' }} />
+                            {/* Right 3D edge */}
+                            <div className="absolute top-1 rounded-r-2xl" style={{ right: '-8px', width: '8px', height: 'calc(100% - 4px)', background: `linear-gradient(to right, ${tex.edge}dd, ${tex.edge}88)`, transform: 'skewY(-2deg)' }} />
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     <div className="space-y-4">
