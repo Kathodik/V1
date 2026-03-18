@@ -5,6 +5,8 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { Phone, Mail, MapPin, Send, Loader2 } from 'lucide-react';
+import { AnimateOnScroll } from '../components/AnimateOnScroll';
+import { useParallax } from '../hooks/useScrollAnimation';
 import { companyInfo } from '../data/mockData';
 import { toast } from 'sonner';
 import axios from 'axios';
@@ -20,6 +22,7 @@ const Contact = () => {
     message: ''
   });
   const [loading, setLoading] = useState(false);
+  const scrollY = useParallax();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -36,184 +39,169 @@ const Contact = () => {
     }
   };
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white to-slate-50 py-20">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold text-slate-800 mb-4">
-            Kontakt <span className="text-[#2c7a7b]">aufnehmen</span>
-          </h1>
-          <p className="text-xl text-slate-600">
-            Wir freuen uns auf Ihre Anfrage
-          </p>
+    <div className="bg-white">
+      {/* Hero banner */}
+      <section className="relative py-28 overflow-hidden">
+        <div
+          className="absolute inset-0 bg-gradient-to-b from-slate-50 to-white"
+          style={{ transform: `translateY(${scrollY * 0.1}px)` }}
+        />
+        <div
+          className="absolute bottom-0 right-0 w-[500px] h-[500px] rounded-full opacity-[0.04]"
+          style={{ background: 'radial-gradient(circle, #2c7a7b 0%, transparent 70%)' }}
+        />
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <AnimateOnScroll variant="fadeUp" duration="slow">
+            <div className="text-center">
+              <p className="text-sm font-semibold tracking-[0.2em] uppercase text-[#2c7a7b] mb-4">
+                Nehmen Sie Kontakt auf
+              </p>
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-slate-800 mb-4" data-testid="contact-heading">
+                Wir sind für Sie da
+              </h1>
+              <p className="text-lg text-slate-500 max-w-xl mx-auto">
+                Haben Sie Fragen zu unseren Dienstleistungen? Kontaktieren Sie uns!
+              </p>
+            </div>
+          </AnimateOnScroll>
         </div>
+      </section>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-6xl mx-auto">
-          {/* Contact Information */}
-          <div className="space-y-6">
-            <Card className="bg-white border-slate-300">
-              <CardContent className="p-8">
-                <h2 className="text-2xl font-bold text-slate-800 mb-6">Kontaktinformationen</h2>
-                <div className="space-y-6">
-                  <div className="flex items-start space-x-4">
-                    <div className="w-12 h-12 bg-[#2c7a7b]/10 rounded-xl flex items-center justify-center flex-shrink-0">
-                      <MapPin className="h-6 w-6 text-[#2c7a7b]" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-semibold text-slate-800 mb-1">Adresse</h3>
-                      <p className="text-slate-600">
-                        {companyInfo.address}<br />
-                        {companyInfo.city}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start space-x-4">
-                    <div className="w-12 h-12 bg-[#2c7a7b]/10 rounded-xl flex items-center justify-center flex-shrink-0">
-                      <Phone className="h-6 w-6 text-[#2c7a7b]" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-semibold text-slate-800 mb-1">Telefon</h3>
-                      <a 
-                        href={`tel:${companyInfo.phone}`} 
-                        className="text-slate-600 hover:text-[#2c7a7b] transition-colors"
-                      >
-                        {companyInfo.phone}
-                      </a>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start space-x-4">
-                    <div className="w-12 h-12 bg-[#2c7a7b]/10 rounded-xl flex items-center justify-center flex-shrink-0">
-                      <Mail className="h-6 w-6 text-[#2c7a7b]" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-semibold text-slate-800 mb-1">E-Mail</h3>
-                      <a 
-                        href={`mailto:${companyInfo.email}`} 
-                        className="text-slate-600 hover:text-[#2c7a7b] transition-colors"
-                      >
-                        {companyInfo.email}
-                      </a>
+      {/* Contact content */}
+      <section className="pb-20">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-12 max-w-6xl mx-auto">
+            {/* Contact Info */}
+            <div className="lg:col-span-2">
+              <AnimateOnScroll variant="fadeRight" duration="normal">
+                <div className="space-y-8">
+                  <div>
+                    <p className="text-sm font-semibold tracking-[0.15em] uppercase text-[#2c7a7b] mb-6">
+                      Kontaktdaten
+                    </p>
+                    <div className="space-y-6">
+                      {[
+                        { icon: Phone, label: 'Telefon', value: companyInfo.phone, href: `tel:${companyInfo.phone}` },
+                        { icon: Mail, label: 'E-Mail', value: companyInfo.email, href: `mailto:${companyInfo.email}` },
+                        { icon: MapPin, label: 'Adresse', value: `${companyInfo.address}\n${companyInfo.city}`, href: null }
+                      ].map((item, index) => (
+                        <AnimateOnScroll key={index} variant="fadeUp" delay={index * 100}>
+                          <div className="flex items-start space-x-4 group">
+                            <div className="w-12 h-12 rounded-xl bg-[#2c7a7b]/5 group-hover:bg-[#2c7a7b]/10 flex items-center justify-center flex-shrink-0 transition-colors duration-300">
+                              <item.icon className="h-5 w-5 text-[#2c7a7b]" />
+                            </div>
+                            <div>
+                              <p className="text-xs font-semibold tracking-wider uppercase text-slate-400 mb-1">{item.label}</p>
+                              {item.href ? (
+                                <a href={item.href} className="text-slate-700 hover:text-[#2c7a7b] transition-colors whitespace-pre-line font-medium">{item.value}</a>
+                              ) : (
+                                <p className="text-slate-700 whitespace-pre-line font-medium">{item.value}</p>
+                              )}
+                            </div>
+                          </div>
+                        </AnimateOnScroll>
+                      ))}
                     </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
 
-            <Card className="bg-[#2c7a7b]/10 border-[#2c7a7b]/30">
-              <CardContent className="p-8">
-                <h3 className="text-xl font-bold text-slate-800 mb-4">Öffnungszeiten</h3>
-                <div className="space-y-2 text-slate-700">
-                  <div className="flex justify-between">
-                    <span>Montag - Freitag:</span>
-                    <span className="font-semibold">Nach Vereinbarung</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Samstag - Sonntag:</span>
-                    <span className="font-semibold">Geschlossen</span>
-                  </div>
+                  <AnimateOnScroll variant="fadeUp" delay={400}>
+                    <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200">
+                      <p className="text-sm font-semibold text-slate-800 mb-2">Geschäftsführer</p>
+                      <p className="text-slate-600">{companyInfo.owner}</p>
+                      <p className="text-sm text-slate-400 mt-1">{companyInfo.legalForm}</p>
+                    </div>
+                  </AnimateOnScroll>
                 </div>
-                <p className="text-sm text-slate-600 mt-4">
-                  Bitte vereinbaren Sie telefonisch oder per E-Mail einen Termin.
-                </p>
-              </CardContent>
-            </Card>
-          </div>
+              </AnimateOnScroll>
+            </div>
 
-          {/* Contact Form */}
-          <Card className="bg-white border-slate-300">
-            <CardContent className="p-8">
-              <h2 className="text-2xl font-bold text-slate-800 mb-6">Senden Sie uns eine Nachricht</h2>
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div>
-                  <Label htmlFor="name" className="text-slate-800 mb-2 block font-semibold">
-                    Name *
-                  </Label>
-                  <Input
-                    id="name"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleChange}
-                    placeholder="Ihr vollständiger Name"
-                    className="bg-white border-slate-300 text-slate-800"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="email" className="text-slate-800 mb-2 block font-semibold">
-                    E-Mail *
-                  </Label>
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    placeholder="ihre@email.de"
-                    className="bg-white border-slate-300 text-slate-800"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="phone" className="text-slate-800 mb-2 block font-semibold">
-                    Telefon (optional)
-                  </Label>
-                  <Input
-                    id="phone"
-                    name="phone"
-                    type="tel"
-                    value={formData.phone}
-                    onChange={handleChange}
-                    placeholder="Ihre Telefonnummer"
-                    className="bg-white border-slate-300 text-slate-800"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="message" className="text-slate-800 mb-2 block font-semibold">
-                    Nachricht *
-                  </Label>
-                  <Textarea
-                    id="message"
-                    name="message"
-                    value={formData.message}
-                    onChange={handleChange}
-                    placeholder="Beschreiben Sie Ihr Anliegen..."
-                    className="bg-white border-slate-300 text-slate-800 min-h-32"
-                    required
-                  />
-                </div>
-
-                <Button 
-                  type="submit" 
-                  className="w-full bg-[#2c7a7b] hover:bg-[#285e61] text-white py-6 text-lg transition-all duration-300 hover:scale-105"
-                  disabled={loading}
-                  data-testid="contact-submit-btn"
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                      Wird gesendet...
-                    </>
-                  ) : (
-                    <>
+            {/* Contact Form */}
+            <div className="lg:col-span-3">
+              <AnimateOnScroll variant="fadeLeft" duration="normal" delay={150}>
+                <Card className="bg-white border border-slate-200 shadow-lg">
+                  <CardContent className="p-8">
+                    <h2 className="text-2xl font-bold text-slate-800 mb-6">
                       Nachricht senden
-                      <Send className="ml-2 h-5 w-5" />
-                    </>
-                  )}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
+                    </h2>
+                    <form onSubmit={handleSubmit} className="space-y-5">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="name" className="text-slate-700 font-semibold mb-2 block">Name *</Label>
+                          <Input
+                            id="name"
+                            value={formData.name}
+                            onChange={(e) => setFormData({...formData, name: e.target.value})}
+                            placeholder="Ihr Name"
+                            className="bg-white border-slate-200 focus:border-[#2c7a7b]"
+                            required
+                            data-testid="contact-name"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="email" className="text-slate-700 font-semibold mb-2 block">E-Mail *</Label>
+                          <Input
+                            id="email"
+                            type="email"
+                            value={formData.email}
+                            onChange={(e) => setFormData({...formData, email: e.target.value})}
+                            placeholder="ihre@email.de"
+                            className="bg-white border-slate-200 focus:border-[#2c7a7b]"
+                            required
+                            data-testid="contact-email"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <Label htmlFor="phone" className="text-slate-700 font-semibold mb-2 block">Telefon</Label>
+                        <Input
+                          id="phone"
+                          type="tel"
+                          value={formData.phone}
+                          onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                          placeholder="Ihre Telefonnummer"
+                          className="bg-white border-slate-200 focus:border-[#2c7a7b]"
+                          data-testid="contact-phone"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="message" className="text-slate-700 font-semibold mb-2 block">Nachricht *</Label>
+                        <Textarea
+                          id="message"
+                          value={formData.message}
+                          onChange={(e) => setFormData({...formData, message: e.target.value})}
+                          placeholder="Beschreiben Sie Ihr Projekt oder Ihre Frage..."
+                          className="bg-white border-slate-200 focus:border-[#2c7a7b] min-h-36"
+                          required
+                          data-testid="contact-message"
+                        />
+                      </div>
+                      <Button
+                        type="submit"
+                        className="w-full bg-[#2c7a7b] hover:bg-[#285e61] text-white py-6 text-lg rounded-full transition-all duration-300 shadow-lg shadow-[#2c7a7b]/20"
+                        disabled={loading}
+                        data-testid="contact-submit-btn"
+                      >
+                        {loading ? (
+                          <>
+                            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                            Wird gesendet...
+                          </>
+                        ) : (
+                          <>
+                            Nachricht senden
+                            <Send className="ml-2 h-5 w-5" />
+                          </>
+                        )}
+                      </Button>
+                    </form>
+                  </CardContent>
+                </Card>
+              </AnimateOnScroll>
+            </div>
+          </div>
         </div>
-      </div>
+      </section>
     </div>
   );
 };

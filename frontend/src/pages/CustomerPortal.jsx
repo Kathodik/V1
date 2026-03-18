@@ -5,6 +5,7 @@ import { Button } from '../components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Badge } from '../components/ui/badge';
 import { LogOut, Package, MessageCircle, FileText, User, RefreshCw } from 'lucide-react';
+import { AnimateOnScroll } from '../components/AnimateOnScroll';
 import { useAuth } from '../contexts/AuthContext';
 import AIChat from '../components/AIChat';
 import axios from 'axios';
@@ -81,40 +82,34 @@ const CustomerPortal = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white to-slate-50 py-20">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="text-4xl font-bold text-slate-800 mb-2">
-              Willkommen, <span className="text-[#2c7a7b]">{user.name}</span>
-            </h1>
-            <p className="text-slate-600">{user.email}</p>
-          </div>
-          <div className="flex items-center space-x-3">
-            <Button
-              onClick={fetchData}
-              variant="outline"
-              className="border-slate-300"
-            >
-              <RefreshCw className={`h-5 w-5 mr-2 ${loading ? 'animate-spin' : ''}`} />
-              Aktualisieren
-            </Button>
-            <Button
-              onClick={() => {
-                logout();
-                navigate('/');
-              }}
-              variant="outline"
-              className="border-red-300 text-red-600 hover:bg-red-50"
-            >
-              <LogOut className="h-5 w-5 mr-2" />
-              Abmelden
-            </Button>
-          </div>
-        </div>
+    <div className="bg-white min-h-screen">
+      <section className="py-20">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Header */}
+          <AnimateOnScroll variant="fadeUp" duration="normal">
+            <div className="mb-8 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold tracking-[0.15em] uppercase text-[#2c7a7b] mb-2">Kundenportal</p>
+                <h1 className="text-4xl font-bold text-slate-800 mb-2" data-testid="portal-heading">
+                  Willkommen, <span className="text-[#2c7a7b]">{user.name}</span>
+                </h1>
+                <p className="text-slate-500">{user.email}</p>
+              </div>
+              <div className="flex items-center space-x-3">
+                <Button onClick={fetchData} variant="outline" className="border-slate-200 rounded-full" data-testid="refresh-btn">
+                  <RefreshCw className={`h-5 w-5 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                  Aktualisieren
+                </Button>
+                <Button onClick={() => { logout(); navigate('/'); }} variant="outline" className="border-red-200 text-red-600 hover:bg-red-50 rounded-full" data-testid="logout-btn">
+                  <LogOut className="h-5 w-5 mr-2" />
+                  Abmelden
+                </Button>
+              </div>
+            </div>
+          </AnimateOnScroll>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <AnimateOnScroll variant="fadeUp" duration="normal" delay={150}>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Content */}
           <div className="lg:col-span-2">
             <Tabs defaultValue="orders" className="w-full">
@@ -284,8 +279,10 @@ const CustomerPortal = () => {
               </CardContent>
             </Card>
           </div>
+          </div>
+        </AnimateOnScroll>
         </div>
-      </div>
+      </section>
     </div>
   );
 };

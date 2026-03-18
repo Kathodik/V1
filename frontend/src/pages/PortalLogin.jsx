@@ -128,17 +128,18 @@ const PortalLogin = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white to-slate-50 py-20 flex items-center">
+    <div className="bg-white min-h-screen py-20 flex items-center">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="max-w-md mx-auto">
-          <div className="text-center mb-8">
-            <img 
-              src="https://customer-assets.emergentagent.com/job_metal-coating/artifacts/4mzqxaj5_A80F545A-F543-476F-BF3A-7169BDADA022.png" 
-              alt="Kathodik" 
+          <div className="text-center mb-8 hero-reveal">
+            <img
+              src="https://customer-assets.emergentagent.com/job_metal-coating/artifacts/4mzqxaj5_A80F545A-F543-476F-BF3A-7169BDADA022.png"
+              alt="Kathodik"
               className="h-20 w-auto mx-auto mb-4"
             />
-            <h1 className="text-3xl font-bold text-slate-800 mb-2">Kundenportal</h1>
-            <p className="text-slate-600">Verwalten Sie Ihre Aufträge und Anfragen</p>
+            <p className="text-sm font-semibold tracking-[0.2em] uppercase text-[#2c7a7b] mb-2">Kundenportal</p>
+            <h1 className="text-3xl font-bold text-slate-800 mb-2" data-testid="portal-login-heading">Anmelden</h1>
+            <p className="text-slate-500">Verwalten Sie Ihre Aufträge und Anfragen</p>
           </div>
 
           {verificationSuccess && (
