@@ -61,7 +61,7 @@ class ChatService:
         chat.with_model("openai", "gpt-4o")
         return chat
 
-    async def send_message(self, session_id: str, message: str) -> str:
+    async def send_message(self, session_id: str, message: str, image_data: str = None) -> str:
         try:
             logger.info(f"Processing message for session {session_id}: {message[:80]}...")
 
@@ -75,7 +75,13 @@ class ChatService:
                 elif msg["role"] == "assistant":
                     chat.messages.append({"role": "assistant", "content": msg["content"]})
 
-            user_message = UserMessage(text=message)
+            # Build user message with optional image
+            if image_data:
+                user_message = UserMessage(text=message, image_url=image_data)
+                logger.info("Sending message with image data")
+            else:
+                user_message = UserMessage(text=message)
+
             response = await chat.send_message(user_message)
 
             logger.info(f"Got response: {str(response)[:80]}...")

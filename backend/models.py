@@ -6,6 +6,7 @@ import uuid
 class ChatMessage(BaseModel):
     session_id: str
     message: str
+    image_data: Optional[str] = None
 
 class ChatResponse(BaseModel):
     response: str

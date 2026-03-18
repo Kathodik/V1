@@ -63,12 +63,29 @@ const AIThreeDConfigurator = () => {
     setLoading(true);
     try {
       let aiPrompt = userMessage;
-      if (uploadedImages.length > 0) aiPrompt += `\n\n[Hinweis: Der Kunde hat ${uploadedImages.length} Bild(er) hochgeladen.]`;
       if (uploaded3DFiles.length > 0) aiPrompt += `\n\n[Hinweis: Der Kunde hat ${uploaded3DFiles.length} 3D-Modelldatei(en) hochgeladen: ${uploaded3DFiles.map(f => f.name).join(', ')}.]`;
-      const response = await axios.post(`${API}/chat`, { session_id: sessionId, message: aiPrompt });
+
+      // Convert first image to base64 if available
+      let imageData = null;
+      if (uploadedImages.length > 0) {
+        try {
+          const imgFile = uploadedImages[0].file;
+          imageData = await fileToBase64(imgFile);
+          aiPrompt += '\n\n[Ein Bild wurde hochgeladen. Bitte analysiere es.]';
+        } catch (imgErr) {
+          console.error('Image conversion error:', imgErr);
+          aiPrompt += `\n\n[Hinweis: Der Kunde hat ${uploadedImages.length} Bild(er) hochgeladen, konnte aber nicht verarbeitet werden.]`;
+        }
+      }
+
+      const response = await axios.post(`${API}/chat`, {
+        session_id: sessionId,
+        message: aiPrompt,
+        image_data: imageData
+      });
       const aiResponse = response.data.response;
-      const config = extractConfiguration(aiResponse);
-      if (config) setCurrentConfig(config);
+      const config = extractConfiguration(userMessage, aiResponse);
+      if (config) setCurrentConfig(prev => ({ ...prev, ...config }));
       setChatMessages([...newMessages, { role: 'assistant', content: aiResponse, config }]);
       if (config && config.readyForSubmission) setShowContactForm(true);
     } catch (error) {
@@ -79,17 +96,53 @@ const AIThreeDConfigurator = () => {
     }
   };
 
-  const extractConfiguration = (aiResponse) => {
-    const lower = aiResponse.toLowerCase();
+  const fileToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const extractConfiguration = (userMsg, aiResponse) => {
+    // Check user message FIRST for metal preference, then AI response
+    const userLower = (userMsg || '').toLowerCase();
+    const aiLower = aiResponse.toLowerCase();
     let config = {};
-    if (lower.includes('würfel') || lower.includes('quader') || lower.includes('rechteck')) config.shape = 'cube';
-    else if (lower.includes('zylinder') || lower.includes('rohr')) config.shape = 'cylinder';
-    else if (lower.includes('kugel') || lower.includes('sphäre')) config.shape = 'sphere';
+
+    // Detect shape
+    const combined = userLower + ' ' + aiLower;
+    if (combined.includes('würfel') || combined.includes('quader') || combined.includes('rechteck')) config.shape = 'cube';
+    else if (combined.includes('zylinder') || combined.includes('rohr')) config.shape = 'cylinder';
+    else if (combined.includes('kugel') || combined.includes('sphäre') || combined.includes('ring')) config.shape = 'sphere';
+
+    // Detect metal – user message takes priority
+    let foundInUser = false;
     metals.forEach(metal => {
-      if (lower.includes(metal.name.toLowerCase()) || lower.includes(metal.symbol.toLowerCase())) {
-        config.metal = metal.symbol; config.metalName = metal.name; config.metalColor = metal.color;
+      const nameL = metal.name.toLowerCase();
+      const symL = metal.symbol.toLowerCase();
+      if (userLower.includes(nameL) || userLower === symL || userLower.includes(' ' + symL + ' ')) {
+        config.metal = metal.symbol;
+        config.metalName = metal.name;
+        config.metalColor = metal.color;
+        foundInUser = true;
       }
     });
+    // Only check AI response if user didn't specify
+    if (!foundInUser) {
+      metals.forEach(metal => {
+        const nameL = metal.name.toLowerCase();
+        // Only match full word mentions in AI response to avoid false positives
+        const regex = new RegExp('\\b' + nameL + '\\b');
+        if (regex.test(aiLower)) {
+          config.metal = metal.symbol;
+          config.metalName = metal.name;
+          config.metalColor = metal.color;
+        }
+      });
+    }
+
     if (config.shape && config.metal) config.readyForSubmission = true;
     return Object.keys(config).length > 0 ? config : null;
   };

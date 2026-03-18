@@ -122,7 +122,9 @@ async def get_status_checks():
 async def chat(message: ChatMessage):
     """Send message to AI chatbot"""
     try:
-        response = await chat_service.send_message(message.session_id, message.message)
+        response = await chat_service.send_message(
+            message.session_id, message.message, image_data=message.image_data
+        )
         return ChatResponse(response=response, session_id=message.session_id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
