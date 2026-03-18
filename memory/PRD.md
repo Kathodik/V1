@@ -56,7 +56,13 @@ Professional website for "Kathodik", an electroplating business owned by Hannes 
 - [x] Header: Scroll-aware (transparent at top -> white/blur on scroll)
 - [x] Footer: Redesigned with dark slate-900 theme, 4-column layout
 - [x] Pill-shaped navigation with active-state highlighting
-- [x] Consistent typography: tracking-[0.2em] uppercase section labels, clean headings
+- [x] Services page: 3D metallic periodic table with realistic metal textures
+  - ElementCube component with CSS 3D transforms, specular highlights, 3D depth edges
+  - Transparent glass containers with backdrop-blur
+  - Hover: 3D tilt rotation following mouse movement
+  - Click: Detail panel with large 3D preview + order form
+  - metalGradients: Realistic multi-stop CSS gradients per metal (Au=gold, Cu=copper, Ag=silver, etc.)
+  - Period grouping (4, 5, 6) with correct element positioning
 
 ## Pending / In Progress
 - [ ] **P0**: Resend API key needed for actual email sending (verification + contact form)
