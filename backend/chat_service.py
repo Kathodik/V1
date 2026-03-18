@@ -1,4 +1,4 @@
-from emergentintegrations.llm.chat import LlmChat, UserMessage
+from emergentintegrations.llm.chat import LlmChat, UserMessage, FileContent
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
@@ -77,8 +77,17 @@ class ChatService:
 
             # Build user message with optional image
             if image_data:
-                user_message = UserMessage(text=message, image_url=image_data)
-                logger.info("Sending message with image data")
+                # Extract base64 content and content type from data URL
+                # Format: "data:image/png;base64,iVBOR..."
+                if image_data.startswith('data:'):
+                    header, b64_data = image_data.split(',', 1)
+                    content_type = header.split(':')[1].split(';')[0]
+                else:
+                    b64_data = image_data
+                    content_type = 'image/png'
+                file_content = FileContent(content_type=content_type, file_content_base64=b64_data)
+                user_message = UserMessage(text=message, file_contents=[file_content])
+                logger.info(f"Sending message with image ({content_type})")
             else:
                 user_message = UserMessage(text=message)
 
