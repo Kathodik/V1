@@ -1,4 +1,4 @@
-from emergentintegrations.llm.chat import LlmChat, UserMessage, FileContent
+from emergentintegrations.llm.chat import LlmChat, UserMessage
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
@@ -75,31 +75,46 @@ class ChatService:
                 elif msg["role"] == "assistant":
                     chat.messages.append({"role": "assistant", "content": msg["content"]})
 
-            # Build user message with optional image
             if image_data:
-                # Extract base64 content and content type from data URL
-                # Format: "data:image/png;base64,iVBOR..."
-                if image_data.startswith('data:'):
-                    header, b64_data = image_data.split(',', 1)
-                    content_type = header.split(':')[1].split(';')[0]
-                else:
-                    b64_data = image_data
-                    content_type = 'image/png'
-                file_content = FileContent(content_type=content_type, file_content_base64=b64_data)
-                user_message = UserMessage(text=message, file_contents=[file_content])
-                logger.info(f"Sending message with image ({content_type})")
+                # For images: build OpenAI vision format directly
+                # image_data is "data:image/png;base64,iVBOR..." or raw base64
+                if not image_data.startswith('data:'):
+                    image_data = f"data:image/png;base64,{image_data}"
+
+                # Append multimodal user message directly
+                chat.messages.append({
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": message},
+                        {"type": "image_url", "image_url": {"url": image_data}}
+                    ]
+                })
+                # Call the completion directly
+                logger.info("Sending multimodal message with image")
+                result = await chat._execute_completion(chat.messages)
+                response_text = result.choices[0].message.content
+                # Add assistant response to messages
+                chat.messages.append({"role": "assistant", "content": response_text})
             else:
                 user_message = UserMessage(text=message)
+                response_text = await chat.send_message(user_message)
+                response_text = str(response_text)
 
-            response = await chat.send_message(user_message)
-
-            logger.info(f"Got response: {str(response)[:80]}...")
+            logger.info(f"Got response: {response_text[:80]}...")
 
             # Save both messages to DB
             await self._save_message(session_id, "user", message)
-            await self._save_message(session_id, "assistant", str(response))
+            await self._save_message(session_id, "assistant", response_text)
 
-            return str(response)
+            return response_text
+
+            logger.info(f"Got response: {response_text[:80]}...")
+
+            # Save both messages to DB
+            await self._save_message(session_id, "user", message)
+            await self._save_message(session_id, "assistant", response_text)
+
+            return response_text
 
         except Exception as e:
             logger.error(f"Chat error: {e}", exc_info=True)
