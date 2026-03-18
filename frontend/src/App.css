@@ -1,6 +1,6 @@
 .App {
   min-height: 100vh;
-  background: linear-gradient(to bottom, #ffffff 0%, #f8fafc 100%);
+  background: #ffffff;
 }
 
 /* Smooth scrolling */
@@ -8,56 +8,67 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Hide "Made with Emergent" watermark */
+[data-testid="emergent-watermark"],
+a[href*="emergentagent.com"]:not([class*="nav"]),
+div[class*="emergent-badge"],
+div[style*="Made with"],
+iframe[src*="emergent"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  height: 0 !important;
+  width: 0 !important;
+  position: absolute !important;
+  overflow: hidden !important;
+}
+
+/* Target the specific "Made with Emergent" badge that appears at bottom-right */
+body > div:last-child > a[href*="emergent"],
+body > div[style*="position: fixed"][style*="bottom"],
+#__emergent_badge,
+.emergent-badge {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
-  width: 12px;
+  width: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f5f9;
+  background: #f8fafc;
 }
 
 ::-webkit-scrollbar-thumb {
   background: #2c7a7b;
-  border-radius: 6px;
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
   background: #285e61;
 }
 
-/* Animation for elements */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+/* Section parallax backgrounds */
+.parallax-bg {
+  will-change: transform;
+  transition: transform 0.1s linear;
 }
 
-.animate-fadeIn {
-  animation: fadeIn 0.6s ease-out;
-}
-
-/* Gradient text animation */
-@keyframes gradientShift {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
+/* Smooth section transitions */
+section {
+  position: relative;
+  overflow: hidden;
 }
 
 /* Hover effects for buttons */
 button {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Input focus effects */
@@ -68,3 +79,76 @@ select:focus {
   border-color: #2c7a7b;
   box-shadow: 0 0 0 3px rgba(44, 122, 123, 0.1);
 }
+
+/* Grain texture overlay for sections */
+.grain-overlay::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Divider wave shape between sections */
+.section-divider {
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 100%;
+  overflow: hidden;
+  line-height: 0;
+}
+
+.section-divider svg {
+  position: relative;
+  display: block;
+  width: calc(100% + 1.3px);
+  height: 60px;
+}
+
+/* Counter animation */
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Metallic shimmer effect */
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+.shimmer-text {
+  background: linear-gradient(90deg, #2c7a7b 0%, #4fd1c5 25%, #2c7a7b 50%, #4fd1c5 75%, #2c7a7b 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer 4s linear infinite;
+}
+
+/* Smooth reveal for hero text */
+@keyframes heroReveal {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+    filter: blur(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+.hero-reveal {
+  animation: heroReveal 1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  opacity: 0;
+}
+
+.hero-reveal-delay-1 { animation-delay: 0.15s; }
+.hero-reveal-delay-2 { animation-delay: 0.3s; }
+.hero-reveal-delay-3 { animation-delay: 0.5s; }
+.hero-reveal-delay-4 { animation-delay: 0.7s; }

@@ -19,7 +19,7 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <div className="App min-h-screen bg-gradient-to-b from-white to-slate-50">
+        <div className="App min-h-screen bg-white">
           <Header />
           <main className="pt-20">
             <Routes>
