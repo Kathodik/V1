@@ -57,19 +57,19 @@ const Home = () => {
               className="text-5xl sm:text-6xl lg:text-7xl font-bold text-slate-800 mb-8 leading-[1.1] tracking-tight hero-reveal hero-reveal-delay-1"
               data-testid="hero-heading"
             >
-              <span className="text-[#2c7a7b]">Kathodik.</span>{' '}
-              <span className="block mt-2">Weil Ihr Lieblingsstück</span>
-              <span className="block">die Kathode ist.</span>
+              <span className="text-[#2c7a7b]">Kathodik</span>{' '}
+              <span className="block mt-2">Metallveredelung</span>
+              <span className="block">aus Leidenschaft.</span>
             </h1>
             <p
               className="text-lg sm:text-xl text-slate-500 mb-12 leading-relaxed max-w-2xl mx-auto font-medium hero-reveal hero-reveal-delay-2"
               data-testid="hero-subline"
             >
-              Wir schauen, was sich machen lässt –
+              Damit Ihr Lieblingsstück Geschichte schreibt –
               <br />
-              und liefern, was sich sehen lässt.
+              und nicht der Rost.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center hero-reveal hero-reveal-delay-3">
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center hero-reveal hero-reveal-delay-3">
               <Link to="/services">
                 <Button
                   size="lg"
@@ -79,6 +79,7 @@ const Home = () => {
                   Metall auswählen
                 </Button>
               </Link>
+              <ChevronDown className="h-5 w-5 text-slate-400 hidden sm:block" />
               <Link to="/contact">
                 <Button
                   size="lg"
@@ -91,14 +92,6 @@ const Home = () => {
               </Link>
             </div>
           </div>
-        </div>
-
-        {/* Scroll indicator */}
-        <div
-          className="absolute bottom-10 left-1/2 -translate-x-1/2 hero-reveal hero-reveal-delay-4 cursor-pointer"
-          onClick={() => document.getElementById('services-section')?.scrollIntoView({ behavior: 'smooth' })}
-        >
-          <ChevronDown className="h-6 w-6 text-slate-400 animate-bounce" />
         </div>
 
         {/* Bottom gradient fade into next section */}
