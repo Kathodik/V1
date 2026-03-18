@@ -35,6 +35,17 @@ Professional website for "Kathodik", an electroplating business owned by Hannes 
 - [x] Footer with company info and links
 - [x] Floating chat button (hidden on homepage)
 
+### Completed (March 18, 2026)
+- [x] "Made with Emergent" watermark removed via CSS (#emergent-badge)
+- [x] Arrow icon removed from homepage CTA buttons
+- [x] Homepage redesigned with cinematic scroll animations (like drhessetech.de)
+- [x] Parallax effects on hero section and brand section
+- [x] Scroll-triggered fade-in/slide animations (IntersectionObserver)
+- [x] New AnimateOnScroll component + useScrollAnimation/useParallax hooks
+- [x] Metals preview strip with 12 element symbols
+- [x] Dark CTA section with gradient background
+- [x] Professional section transitions with staggered delays
+
 ## Pending / In Progress
 - [ ] **P0**: Resend API key needed for actual email sending (verification + contact form)
 - [ ] **P1**: Admin Portal (separate login + dashboard)
