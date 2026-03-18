@@ -45,6 +45,18 @@ Professional website for "Kathodik", an electroplating business owned by Hannes 
 - [x] Metals preview strip with 12 element symbols
 - [x] Dark CTA section with gradient background
 - [x] Professional section transitions with staggered delays
+- [x] ALL pages redesigned with consistent scroll animations:
+  - Services: Animated hero + periodic table with mouse parallax + animated metal details
+  - 3D Configurator: Animated hero + fade-in chat interface + 3D preview
+  - References: Animated cards with hover zoom + teal owner section
+  - Contact: Animated contact info + slide-in form
+  - Imprint: Staggered card animations for legal sections
+  - Customer Portal: Fade-in header + content animations
+  - Portal Login: Hero-reveal animation on login form
+- [x] Header: Scroll-aware (transparent at top -> white/blur on scroll)
+- [x] Footer: Redesigned with dark slate-900 theme, 4-column layout
+- [x] Pill-shaped navigation with active-state highlighting
+- [x] Consistent typography: tracking-[0.2em] uppercase section labels, clean headings
 
 ## Pending / In Progress
 - [ ] **P0**: Resend API key needed for actual email sending (verification + contact form)
