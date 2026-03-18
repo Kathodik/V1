@@ -256,77 +256,81 @@ const AIThreeDConfigurator = () => {
             {/* AI Chat Interface */}
             <div className="lg:col-span-2">
               <AnimateOnScroll variant="fadeLeft" duration="normal" delay={150}>
-                <Card className="bg-white border border-slate-200 shadow-lg flex flex-col" style={{ height: '700px' }}>
-                  <CardHeader className="border-b border-slate-100">
-                    <CardTitle className="flex items-center space-x-2 text-slate-800">
+                <div className="bg-white border border-slate-200 shadow-lg rounded-lg flex flex-col overflow-hidden" style={{ height: '700px' }}>
+                  <div className="border-b border-slate-100 px-6 py-4 flex-shrink-0">
+                    <h3 className="flex items-center space-x-2 text-slate-800 font-semibold text-lg">
                       <Sparkles className="h-5 w-5 text-[#2c7a7b]" />
-                      <span>KI-Assistent</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="flex-1 flex flex-col p-0">
-                    <div className="flex-1 overflow-y-auto p-6 space-y-4" data-testid="chat-messages">
-                      {chatMessages.map((message, index) => (
-                        <div key={index} className={`flex items-start space-x-3 ${message.role === 'user' ? 'justify-end' : ''}`}>
-                          {message.role === 'assistant' && (
-                            <div className="w-8 h-8 rounded-full bg-[#2c7a7b]/10 flex items-center justify-center flex-shrink-0">
-                              <Sparkles className="h-5 w-5 text-[#2c7a7b]" />
-                            </div>
-                          )}
-                          <div className={`max-w-[80%] rounded-lg p-4 ${message.role === 'user' ? 'bg-[#2c7a7b] text-white' : 'bg-slate-50 text-slate-800 border border-slate-100'}`}>
-                            <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                            {message.images > 0 && <p className="text-xs mt-2 opacity-75">{message.images} Bild(er) angehängt</p>}
-                          </div>
-                        </div>
-                      ))}
-                      {loading && (
-                        <div className="flex items-start space-x-3">
+                      <span>Luigi Galvani</span>
+                      <span className="text-xs text-slate-400 font-normal ml-1">KI-Assistent</span>
+                    </h3>
+                  </div>
+
+                  {/* Messages – scrollable */}
+                  <div className="flex-1 overflow-y-auto p-6 space-y-4 min-h-0" data-testid="chat-messages">
+                    {chatMessages.map((message, index) => (
+                      <div key={index} className={`flex items-start space-x-3 ${message.role === 'user' ? 'justify-end' : ''}`}>
+                        {message.role === 'assistant' && (
                           <div className="w-8 h-8 rounded-full bg-[#2c7a7b]/10 flex items-center justify-center flex-shrink-0">
                             <Sparkles className="h-5 w-5 text-[#2c7a7b]" />
                           </div>
-                          <div className="bg-slate-50 border border-slate-100 rounded-lg p-4">
-                            <Loader2 className="h-5 w-5 animate-spin text-[#2c7a7b]" />
-                          </div>
+                        )}
+                        <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${message.role === 'user' ? 'bg-[#2c7a7b] text-white rounded-br-md' : 'bg-slate-50 text-slate-800 border border-slate-100 rounded-bl-md'}`}>
+                          <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                          {message.images > 0 && <p className="text-xs mt-2 opacity-75">{message.images} Bild(er) angehängt</p>}
                         </div>
-                      )}
-                    </div>
-
-                    {uploadedImages.length > 0 && (
-                      <div className="px-6 py-3 border-t border-slate-100 bg-slate-50">
-                        <div className="flex items-center space-x-2 overflow-x-auto">
-                          {uploadedImages.map((image, index) => (
-                            <div key={index} className="relative flex-shrink-0">
-                              <img src={image.url} alt={`Upload ${index + 1}`} className="w-20 h-20 object-cover rounded border border-slate-200" />
-                              <button onClick={() => removeImage(index)} className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600"><X className="h-4 w-4" /></button>
-                            </div>
-                          ))}
+                      </div>
+                    ))}
+                    {loading && (
+                      <div className="flex items-start space-x-3">
+                        <div className="w-8 h-8 rounded-full bg-[#2c7a7b]/10 flex items-center justify-center flex-shrink-0">
+                          <Sparkles className="h-5 w-5 text-[#2c7a7b]" />
+                        </div>
+                        <div className="bg-slate-50 border border-slate-100 rounded-2xl rounded-bl-md p-4">
+                          <Loader2 className="h-5 w-5 animate-spin text-[#2c7a7b]" />
                         </div>
                       </div>
                     )}
+                  </div>
 
-                    <div className="border-t border-slate-100 p-4">
-                      {uploaded3DFiles.length > 0 && (
-                        <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                          <p className="text-xs font-semibold text-blue-800 mb-2">3D-Modelldateien:</p>
-                          {uploaded3DFiles.map((file, index) => (
-                            <div key={index} className="flex items-center justify-between bg-white p-2 rounded border border-blue-200 mb-1">
-                              <span className="text-xs text-slate-700">{file.name} ({file.size})</span>
-                              <button onClick={() => remove3DFile(index)} className="text-red-500 hover:text-red-700"><X className="h-4 w-4" /></button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      <div className="flex items-end space-x-2">
-                        <Button type="button" variant="outline" size="icon" onClick={() => fileInputRef.current?.click()} className="flex-shrink-0 border-slate-200" title="Bilder hochladen"><ImageIcon className="h-5 w-5" /></Button>
-                        <input ref={fileInputRef} type="file" multiple accept="image/*" onChange={handleImageUpload} className="hidden" />
-                        <Button type="button" variant="outline" size="icon" onClick={() => modelFileInputRef.current?.click()} className="flex-shrink-0 border-slate-200 bg-blue-50" title="3D-Modell hochladen"><Upload className="h-5 w-5 text-blue-600" /></Button>
-                        <input ref={modelFileInputRef} type="file" multiple accept=".stl,.obj,.step,.stp,.iges,.igs,.3mf" onChange={handle3DFileUpload} className="hidden" />
-                        <textarea value={userInput} onChange={(e) => setUserInput(e.target.value)} onKeyPress={handleKeyPress} placeholder="Beschreiben Sie Ihr Teil..." className="flex-1 min-h-[60px] max-h-32 px-4 py-3 border border-slate-200 rounded-lg resize-none focus:outline-none focus:border-[#2c7a7b] text-sm" disabled={loading} data-testid="chat-input" />
-                        <Button onClick={sendMessage} disabled={loading || (!userInput.trim() && uploadedImages.length === 0 && uploaded3DFiles.length === 0)} className="flex-shrink-0 bg-[#2c7a7b] hover:bg-[#285e61] text-white rounded-full" size="icon" data-testid="chat-send-btn"><Send className="h-5 w-5" /></Button>
+                  {/* Image previews */}
+                  {uploadedImages.length > 0 && (
+                    <div className="px-4 py-3 border-t border-slate-100 bg-slate-50 flex-shrink-0">
+                      <div className="flex items-center space-x-2 overflow-x-auto">
+                        {uploadedImages.map((image, index) => (
+                          <div key={index} className="relative flex-shrink-0">
+                            <img src={image.url} alt={`Upload ${index + 1}`} className="w-16 h-16 object-cover rounded border border-slate-200" />
+                            <button onClick={() => removeImage(index)} className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 text-xs"><X className="h-3 w-3" /></button>
+                          </div>
+                        ))}
                       </div>
-                      <p className="text-xs text-slate-400 mt-2">Tipp: Laden Sie 3D-Dateien hoch (STL, OBJ, STEP) oder beschreiben Sie Form, Größe und Material</p>
                     </div>
-                  </CardContent>
-                </Card>
+                  )}
+
+                  {/* 3D file list */}
+                  {uploaded3DFiles.length > 0 && (
+                    <div className="px-4 py-2 border-t border-slate-100 bg-blue-50 flex-shrink-0">
+                      {uploaded3DFiles.map((file, index) => (
+                        <div key={index} className="flex items-center justify-between py-1">
+                          <span className="text-xs text-slate-700">{file.name} ({file.size})</span>
+                          <button onClick={() => remove3DFile(index)} className="text-red-500 hover:text-red-700"><X className="h-3.5 w-3.5" /></button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Input bar – always at bottom */}
+                  <div className="border-t border-slate-200 p-4 bg-white flex-shrink-0">
+                    <div className="flex items-end space-x-2">
+                      <Button type="button" variant="outline" size="icon" onClick={() => fileInputRef.current?.click()} className="flex-shrink-0 border-slate-200 h-10 w-10" title="Bilder hochladen"><ImageIcon className="h-4 w-4" /></Button>
+                      <input ref={fileInputRef} type="file" multiple accept="image/*" onChange={handleImageUpload} className="hidden" />
+                      <Button type="button" variant="outline" size="icon" onClick={() => modelFileInputRef.current?.click()} className="flex-shrink-0 border-slate-200 h-10 w-10 bg-blue-50" title="3D-Modell hochladen"><Upload className="h-4 w-4 text-blue-600" /></Button>
+                      <input ref={modelFileInputRef} type="file" multiple accept=".stl,.obj,.step,.stp,.iges,.igs,.3mf" onChange={handle3DFileUpload} className="hidden" />
+                      <textarea value={userInput} onChange={(e) => setUserInput(e.target.value)} onKeyPress={handleKeyPress} placeholder="Frage an Luigi Galvani..." className="flex-1 min-h-[42px] max-h-24 px-4 py-2.5 border border-slate-200 rounded-xl resize-none focus:outline-none focus:border-[#2c7a7b] text-sm" disabled={loading} data-testid="chat-input" />
+                      <Button onClick={sendMessage} disabled={loading || (!userInput.trim() && uploadedImages.length === 0 && uploaded3DFiles.length === 0)} className="flex-shrink-0 bg-[#2c7a7b] hover:bg-[#285e61] text-white rounded-full h-10 w-10 p-0" size="icon" data-testid="chat-send-btn"><Send className="h-4 w-4" /></Button>
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-2 ml-1">3D-Dateien (STL, OBJ, STEP) oder beschreiben Sie Form, Größe und Material</p>
+                  </div>
+                </div>
               </AnimateOnScroll>
 
               {showContactForm && (
