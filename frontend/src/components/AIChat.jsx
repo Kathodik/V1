@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { ScrollArea } from './ui/scroll-area';
-import { Send, Bot, User, Trash2, Loader2 } from 'lucide-react';
+import { Send, Trash2, Loader2, Zap } from 'lucide-react';
 import axios from 'axios';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -14,6 +12,7 @@ const AIChat = ({ sessionId, onClose }) => {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef(null);
+  const scrollContainerRef = useRef(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -40,24 +39,17 @@ const AIChat = ({ sessionId, onClose }) => {
 
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
-
     const userMessage = input.trim();
     setInput('');
-    
-    // Add user message immediately
     setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
     setLoading(true);
-
     try {
       const response = await axios.post(`${API}/chat`, {
         session_id: sessionId,
         message: userMessage
       });
-
-      // Add AI response
       setMessages(prev => [...prev, { role: 'assistant', content: response.data.response }]);
     } catch (error) {
-      console.error('Error sending message:', error);
       setMessages(prev => [
         ...prev,
         { role: 'assistant', content: 'Entschuldigung, es gab einen Fehler. Bitte versuchen Sie es erneut.' }
@@ -84,96 +76,113 @@ const AIChat = ({ sessionId, onClose }) => {
   };
 
   return (
-    <Card className="h-full flex flex-col bg-white border-slate-300">
-      <CardHeader className="border-b border-slate-200">
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center space-x-2 text-slate-800">
-            <Bot className="h-6 w-6 text-[#2c7a7b]" />
-            <span>Galvanik-Berater KI</span>
-          </CardTitle>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={clearHistory}
-            className="text-slate-600 hover:text-red-600"
+    <div className="flex flex-col h-full bg-white rounded-lg overflow-hidden" data-testid="ai-chat">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-white flex-shrink-0">
+        <div className="flex items-center space-x-2.5">
+          <div className="w-8 h-8 rounded-full bg-[#2c7a7b] flex items-center justify-center">
+            <Zap className="h-4 w-4 text-white" />
+          </div>
+          <div>
+            <span className="text-sm font-bold text-slate-800 block leading-none">Luigi Galvani</span>
+            <span className="text-[10px] text-[#2c7a7b] font-medium">Galvanik-Assistent</span>
+          </div>
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={clearHistory}
+          className="text-slate-400 hover:text-red-500 h-8 w-8"
+          title="Verlauf löschen"
+          data-testid="chat-clear-btn"
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
+
+      {/* Messages – scrollable area */}
+      <div
+        ref={scrollContainerRef}
+        className="flex-1 overflow-y-auto p-4 space-y-3"
+        style={{ minHeight: 0 }}
+        data-testid="chat-messages"
+      >
+        {messages.length === 0 && (
+          <div className="text-center py-8">
+            <div className="w-12 h-12 rounded-full bg-[#2c7a7b]/10 flex items-center justify-center mx-auto mb-3">
+              <Zap className="h-6 w-6 text-[#2c7a7b]" />
+            </div>
+            <p className="text-sm font-medium text-slate-700">Hallo! Ich bin Luigi Galvani.</p>
+            <p className="text-xs text-slate-400 mt-1.5 max-w-[240px] mx-auto">
+              Fragen Sie mich alles zur Galvanisierung – Metalle, Verfahren, Anwendungen.
+            </p>
+          </div>
+        )}
+
+        {messages.map((message, index) => (
+          <div
+            key={index}
+            className={`flex items-end gap-2 ${message.role === 'user' ? 'justify-end' : ''}`}
           >
-            <Trash2 className="h-5 w-5" />
+            {message.role === 'assistant' && (
+              <div className="w-7 h-7 rounded-full bg-[#2c7a7b] flex items-center justify-center flex-shrink-0">
+                <Zap className="h-3.5 w-3.5 text-white" />
+              </div>
+            )}
+            <div
+              className={`max-w-[78%] rounded-2xl px-3.5 py-2.5 ${
+                message.role === 'user'
+                  ? 'bg-[#2c7a7b] text-white rounded-br-md'
+                  : 'bg-slate-100 text-slate-800 rounded-bl-md'
+              }`}
+            >
+              <p className="text-[13px] leading-relaxed whitespace-pre-wrap">{message.content}</p>
+            </div>
+            {message.role === 'user' && (
+              <div className="w-7 h-7 rounded-full bg-slate-200 flex items-center justify-center flex-shrink-0">
+                <span className="text-xs font-bold text-slate-500">Sie</span>
+              </div>
+            )}
+          </div>
+        ))}
+
+        {loading && (
+          <div className="flex items-end gap-2">
+            <div className="w-7 h-7 rounded-full bg-[#2c7a7b] flex items-center justify-center flex-shrink-0">
+              <Zap className="h-3.5 w-3.5 text-white" />
+            </div>
+            <div className="bg-slate-100 rounded-2xl rounded-bl-md px-4 py-3">
+              <Loader2 className="h-4 w-4 animate-spin text-[#2c7a7b]" />
+            </div>
+          </div>
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Input */}
+      <div className="border-t border-slate-200 p-3 bg-white flex-shrink-0">
+        <div className="flex gap-2">
+          <Input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="Frage an Luigi Galvani..."
+            className="flex-1 bg-slate-50 border-slate-200 rounded-full text-sm h-10 px-4"
+            disabled={loading}
+            data-testid="chat-input"
+          />
+          <Button
+            onClick={sendMessage}
+            disabled={loading || !input.trim()}
+            className="bg-[#2c7a7b] hover:bg-[#285e61] text-white rounded-full h-10 w-10 p-0"
+            size="icon"
+            data-testid="chat-send-btn"
+          >
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
         </div>
-      </CardHeader>
-      <CardContent className="flex-1 flex flex-col p-0">
-        <ScrollArea className="flex-1 p-4">
-          <div className="space-y-4">
-            {messages.length === 0 && (
-              <div className="text-center text-slate-500 py-8">
-                <Bot className="h-12 w-12 mx-auto mb-3 text-slate-400" />
-                <p className="text-sm">Stellen Sie mir Fragen zur Galvanisierung!</p>
-                <p className="text-xs mt-2">z.B. "Welches Metall ist am besten für Korrosionsschutz?"</p>
-              </div>
-            )}
-            {messages.map((message, index) => (
-              <div
-                key={index}
-                className={`flex items-start space-x-3 ${message.role === 'user' ? 'justify-end' : ''}`}
-              >
-                {message.role === 'assistant' && (
-                  <div className="w-8 h-8 rounded-full bg-[#2c7a7b]/10 flex items-center justify-center flex-shrink-0">
-                    <Bot className="h-5 w-5 text-[#2c7a7b]" />
-                  </div>
-                )}
-                <div
-                  className={`max-w-[80%] rounded-lg p-3 ${message.role === 'user'
-                      ? 'bg-[#2c7a7b] text-white'
-                      : 'bg-slate-100 text-slate-800'
-                    }`}
-                >
-                  <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                </div>
-                {message.role === 'user' && (
-                  <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center flex-shrink-0">
-                    <User className="h-5 w-5 text-slate-600" />
-                  </div>
-                )}
-              </div>
-            ))}
-            {loading && (
-              <div className="flex items-start space-x-3">
-                <div className="w-8 h-8 rounded-full bg-[#2c7a7b]/10 flex items-center justify-center flex-shrink-0">
-                  <Bot className="h-5 w-5 text-[#2c7a7b]" />
-                </div>
-                <div className="bg-slate-100 rounded-lg p-3">
-                  <Loader2 className="h-5 w-5 animate-spin text-[#2c7a7b]" />
-                </div>
-              </div>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-        </ScrollArea>
-        <div className="border-t border-slate-200 p-4">
-          <div className="flex space-x-2">
-            <Input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="Frage zur Galvanisierung..."
-              className="flex-1 bg-white border-slate-300"
-              disabled={loading}
-            />
-            <Button
-              onClick={sendMessage}
-              disabled={loading || !input.trim()}
-              className="bg-[#2c7a7b] hover:bg-[#285e61] text-white"
-            >
-              {loading ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
-              ) : (
-                <Send className="h-5 w-5" />
-              )}
-            </Button>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 };
 
