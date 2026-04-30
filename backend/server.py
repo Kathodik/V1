@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, UploadFile, File, Form
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -6,6 +6,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 import asyncio
+import base64
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict, EmailStr
 from typing import List, Optional
@@ -13,6 +14,7 @@ import uuid
 import secrets
 from datetime import datetime, timezone, timedelta
 from chat_service import chat_service
+from image_service import generate_concept_image
 from models import (
     ChatMessage, ChatResponse, 
     ThreeDModel, ThreeDModelCreate,
@@ -622,6 +624,150 @@ async def get_saved_requests(email: Optional[str] = None, current_user: User = D
         query = {"email": email or current_user.email}
     requests = await db.saved_requests.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
     return requests
+
+# ─── 3D Configurator Endpoints ───
+class ConceptImageRequest(BaseModel):
+    description: str
+    metal: Optional[str] = None
+    finish: Optional[str] = None
+    reference_image: Optional[str] = None  # base64 encoded
+
+class ConfiguratorOrderRequest(BaseModel):
+    order_type: str  # "upload", "partner_model", "ai_generate"
+    name: str
+    email: EmailStr
+    phone: Optional[str] = None
+    description: Optional[str] = None
+    metal: Optional[str] = None
+    finish: Optional[str] = None
+    file_data: Optional[str] = None  # base64 encoded file for upload path
+    file_name: Optional[str] = None
+    concept_image: Optional[str] = None  # base64 of AI generated concept
+    reference_image: Optional[str] = None  # base64 of user reference image
+
+@api_router.post("/configurator/generate-concept")
+async def generate_concept(request: ConceptImageRequest):
+    """Generate a photorealistic concept image from description"""
+    try:
+        # Build a detailed prompt for photorealistic output
+        metal_desc = f"mit {request.metal}-Beschichtung" if request.metal else ""
+        finish_desc = f"in {request.finish}-Ausführung" if request.finish else ""
+        
+        prompt = (
+            f"Photorealistic product photograph, studio lighting, white background, "
+            f"high detail 3D printed object: {request.description} "
+            f"{metal_desc} {finish_desc}. "
+            f"Professional product photography, sharp focus, metallic surface reflections, "
+            f"clean industrial design, octane render quality."
+        )
+        
+        image_base64 = await generate_concept_image(prompt)
+        
+        return {"image_base64": image_base64, "prompt_used": prompt}
+    except Exception as e:
+        logger.error(f"Concept generation failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Bildgenerierung fehlgeschlagen: {str(e)}")
+
+@api_router.post("/configurator/order")
+async def create_configurator_order(request: ConfiguratorOrderRequest):
+    """Create a 3D configurator order"""
+    order_id = str(uuid.uuid4())
+    
+    doc = {
+        "id": order_id,
+        "order_type": request.order_type,
+        "name": request.name,
+        "email": request.email,
+        "phone": request.phone,
+        "description": request.description,
+        "metal": request.metal,
+        "finish": request.finish,
+        "file_name": request.file_name,
+        "has_file": request.file_data is not None,
+        "has_concept_image": request.concept_image is not None,
+        "has_reference_image": request.reference_image is not None,
+        "status": "new",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    # Store file data separately to keep order doc lean
+    if request.file_data:
+        await db.configurator_files.insert_one({
+            "order_id": order_id,
+            "file_data": request.file_data,
+            "file_name": request.file_name,
+            "type": "upload"
+        })
+    if request.concept_image:
+        await db.configurator_files.insert_one({
+            "order_id": order_id,
+            "file_data": request.concept_image,
+            "file_name": "concept.png",
+            "type": "concept"
+        })
+    if request.reference_image:
+        await db.configurator_files.insert_one({
+            "order_id": order_id,
+            "file_data": request.reference_image,
+            "file_name": "reference.png",
+            "type": "reference"
+        })
+    
+    await db.configurator_orders.insert_one(doc)
+    
+    # Build order type label
+    type_labels = {
+        "upload": "Eigene Datei hochgeladen",
+        "partner_model": "Modellierung durch Partner",
+        "ai_generate": "KI-generiertes Konzept"
+    }
+    type_label = type_labels.get(request.order_type, request.order_type)
+    
+    # Notify admin
+    await send_email_via_resend(
+        to_email="service@kathodik.com",
+        subject=f"Neuer 3D-Konfigurator Auftrag von {request.name}",
+        html_content=f"""
+        <h2>Neuer 3D-Konfigurator Auftrag</h2>
+        <p><strong>Auftragstyp:</strong> {type_label}</p>
+        <p><strong>Name:</strong> {request.name}</p>
+        <p><strong>E-Mail:</strong> {request.email}</p>
+        <p><strong>Telefon:</strong> {request.phone or 'Nicht angegeben'}</p>
+        <p><strong>Metall:</strong> {request.metal or 'Nicht angegeben'}</p>
+        <p><strong>Beschreibung:</strong></p>
+        <p>{request.description or 'Keine Beschreibung'}</p>
+        <p><strong>Datei hochgeladen:</strong> {'Ja - ' + (request.file_name or '') if request.file_data else 'Nein'}</p>
+        <p><strong>Auftrags-ID:</strong> {order_id}</p>
+        """
+    )
+    
+    # Confirm to customer
+    await send_email_via_resend(
+        to_email=request.email,
+        subject="Kathodik - Ihr 3D-Konfigurator Auftrag",
+        html_content=f"""
+        <h2>Vielen Dank für Ihren Auftrag!</h2>
+        <p>Wir haben Ihren Auftrag erhalten und werden uns zeitnah bei Ihnen melden.</p>
+        <p><strong>Auftragstyp:</strong> {type_label}</p>
+        <p><strong>Auftrags-ID:</strong> {order_id}</p>
+        {f'<p><strong>Beschreibung:</strong> {request.description}</p>' if request.description else ''}
+        <br>
+        <p>Mit freundlichen Grüßen,</p>
+        <p><strong>Kathodik - Galvanotechnik</strong></p>
+        """
+    )
+    
+    return {"id": order_id, "message": "Auftrag erfolgreich erstellt", "order_type": request.order_type}
+
+@api_router.get("/configurator/orders")
+async def get_configurator_orders(current_user: User = Depends(get_current_user)):
+    """Get configurator orders (admin: all, user: own)"""
+    if current_user.is_admin:
+        query = {}
+    else:
+        query = {"email": current_user.email}
+    orders = await db.configurator_orders.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
+    return orders
 
 # ─── Analytics Tracking ───
 class PageViewEvent(BaseModel):

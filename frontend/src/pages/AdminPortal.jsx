@@ -7,7 +7,7 @@ import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
 import { Switch } from '../components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { Settings, Users, Bell, Package, LogOut, Mail, BarChart3, Eye, TrendingUp, Cookie } from 'lucide-react';
+import { Settings, Users, Bell, Package, LogOut, Mail, BarChart3, Eye, TrendingUp, Cookie, Box } from 'lucide-react';
 import { AnimateOnScroll } from '../components/AnimateOnScroll';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'sonner';
@@ -24,6 +24,7 @@ const AdminPortal = () => {
   const [waitlist, setWaitlist] = useState([]);
   const [savedRequests, setSavedRequests] = useState([]);
   const [contactMessages, setContactMessages] = useState([]);
+  const [configuratorOrders, setConfiguratorOrders] = useState([]);
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -39,12 +40,13 @@ const AdminPortal = () => {
     setLoading(true);
     try {
       const headers = { Authorization: `Bearer ${token}` };
-      const [settingsRes, waitlistRes, savedRes, contactRes, analyticsRes] = await Promise.all([
+      const [settingsRes, waitlistRes, savedRes, contactRes, analyticsRes, configRes] = await Promise.all([
         axios.get(`${API}/settings/accepting-orders`),
         axios.get(`${API}/waitlist`, { headers }).catch(() => ({ data: [] })),
         axios.get(`${API}/saved-requests`, { headers }).catch(() => ({ data: [] })),
         axios.get(`${API}/contact/messages`, { headers }).catch(() => ({ data: [] })),
-        axios.get(`${API}/analytics/stats`, { headers }).catch(() => ({ data: null }))
+        axios.get(`${API}/analytics/stats`, { headers }).catch(() => ({ data: null })),
+        axios.get(`${API}/configurator/orders`, { headers }).catch(() => ({ data: [] }))
       ]);
       setAcceptingOrders(settingsRes.data.accepting_orders);
       setPauseMessage(settingsRes.data.pause_message || '');
@@ -52,6 +54,7 @@ const AdminPortal = () => {
       setSavedRequests(savedRes.data);
       setContactMessages(contactRes.data);
       setAnalytics(analyticsRes.data);
+      setConfiguratorOrders(configRes.data);
     } catch (error) {
       console.error('Error fetching admin data:', error);
     } finally {
@@ -167,10 +170,14 @@ const AdminPortal = () => {
           {/* Tabs */}
           <AnimateOnScroll variant="fadeUp" delay={200}>
             <Tabs defaultValue="analytics">
-              <TabsList className="grid w-full grid-cols-4 mb-6">
+              <TabsList className="grid w-full grid-cols-5 mb-6">
                 <TabsTrigger value="analytics">
                   <BarChart3 className="h-4 w-4 mr-2" />
                   Statistiken
+                </TabsTrigger>
+                <TabsTrigger value="configurator">
+                  <Box className="h-4 w-4 mr-2" />
+                  3D ({configuratorOrders.length})
                 </TabsTrigger>
                 <TabsTrigger value="waitlist">
                   <Bell className="h-4 w-4 mr-2" />
@@ -328,6 +335,51 @@ const AdminPortal = () => {
                     </CardContent>
                   </Card>
                 )}
+              </TabsContent>
+
+              {/* Configurator Orders Tab */}
+              <TabsContent value="configurator">
+                <div className="space-y-3">
+                  {configuratorOrders.length === 0 ? (
+                    <Card className="bg-white border-slate-200">
+                      <CardContent className="p-8 text-center">
+                        <Box className="h-12 w-12 text-slate-300 mx-auto mb-3" />
+                        <p className="text-slate-500">Keine 3D-Konfigurator Aufträge</p>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    configuratorOrders.map((order, i) => {
+                      const typeLabels = { upload: 'Eigene Datei', partner_model: 'Partner-Modellierung', ai_generate: 'KI-Konzept' };
+                      const typeColors = { upload: 'bg-blue-100 text-blue-700', partner_model: 'bg-purple-100 text-purple-700', ai_generate: 'bg-teal-100 text-teal-700' };
+                      return (
+                        <Card key={i} className="bg-white border-slate-200">
+                          <CardContent className="p-4">
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <div className="flex items-center space-x-2 mb-1">
+                                  <p className="font-semibold text-slate-800">{order.name}</p>
+                                  <Badge className={`text-xs ${typeColors[order.order_type] || 'bg-slate-100 text-slate-700'}`}>
+                                    {typeLabels[order.order_type] || order.order_type}
+                                  </Badge>
+                                </div>
+                                <p className="text-sm text-slate-500">{order.email} {order.phone ? `| ${order.phone}` : ''}</p>
+                                {order.metal && <p className="text-sm text-[#2c7a7b] mt-1">Metall: {order.metal} {order.finish ? `- ${order.finish}` : ''}</p>}
+                                {order.description && <p className="text-sm text-slate-600 mt-1">{order.description}</p>}
+                                {order.file_name && <p className="text-sm text-blue-600 mt-1">Datei: {order.file_name}</p>}
+                              </div>
+                              <div className="text-right">
+                                <p className="text-xs text-slate-400">{new Date(order.created_at).toLocaleDateString('de-DE')}</p>
+                                <Badge className={`text-xs mt-1 ${order.status === 'new' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}`}>
+                                  {order.status === 'new' ? 'Neu' : order.status}
+                                </Badge>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })
+                  )}
+                </div>
               </TabsContent>
 
               <TabsContent value="waitlist">
