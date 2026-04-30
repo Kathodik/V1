@@ -4,8 +4,6 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
-import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Upload, Sparkles, Users, FileUp, Loader2, Image, Send, ArrowLeft, ArrowRight, CheckCircle2, Download } from 'lucide-react';
 import { AnimateOnScroll } from '../components/AnimateOnScroll';
@@ -300,36 +298,77 @@ const AIThreeDConfigurator = () => {
                     </div>
 
                     {/* Metal selection */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <Label className="text-slate-800 font-semibold mb-2 block">Metall-Beschichtung</Label>
-                        <Select value={selectedMetal || undefined} onValueChange={(val) => { setSelectedMetal(val); setSelectedFinish(''); }}>
-                          <SelectTrigger className="bg-white border-slate-200" data-testid="metal-select">
-                            <SelectValue placeholder="Metall wählen" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Keine Beschichtung">Keine Beschichtung</SelectItem>
-                            <SelectItem value="Firmament">Firmament</SelectItem>
-                            {metals.map(m => (
-                              <SelectItem key={m.symbol} value={m.name}>{m.name} ({m.symbol})</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label className="text-slate-800 font-semibold mb-2 block">Ausführung</Label>
-                        <Select value={selectedFinish || undefined} onValueChange={setSelectedFinish} disabled={!currentMetal || selectedMetal === 'Keine Beschichtung' || selectedMetal === 'Firmament'}>
-                          <SelectTrigger className="bg-white border-slate-200" data-testid="finish-select">
-                            <SelectValue placeholder="Ausführung wählen" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {currentMetal?.finishes.map(f => (
-                              <SelectItem key={f.id} value={f.name}>{f.name}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                    <div>
+                      <Label className="text-slate-800 font-semibold mb-3 block">Metall-Beschichtung</Label>
+                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => { setSelectedMetal('Keine Beschichtung'); setSelectedFinish(''); }}
+                          className={`p-3 rounded-xl border-2 text-left transition-all duration-200 ${
+                            selectedMetal === 'Keine Beschichtung'
+                              ? 'border-[#2c7a7b] bg-[#2c7a7b]/5 shadow-md'
+                              : 'border-slate-200 hover:border-slate-300 bg-white'
+                          }`}
+                          data-testid="metal-none"
+                        >
+                          <span className="text-xs font-bold text-slate-400 block">—</span>
+                          <span className="text-xs font-medium text-slate-700 block mt-1">Keine</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setSelectedMetal('Firmament'); setSelectedFinish(''); }}
+                          className={`p-3 rounded-xl border-2 text-left transition-all duration-200 ${
+                            selectedMetal === 'Firmament'
+                              ? 'border-[#2c7a7b] bg-[#2c7a7b]/5 shadow-md'
+                              : 'border-slate-200 hover:border-slate-300 bg-white'
+                          }`}
+                          data-testid="metal-firmament"
+                        >
+                          <span className="text-xs font-bold text-indigo-500 block">FM</span>
+                          <span className="text-xs font-medium text-slate-700 block mt-1">Firmament</span>
+                        </button>
+                        {metals.map(m => (
+                          <button
+                            type="button"
+                            key={m.symbol}
+                            onClick={() => { setSelectedMetal(m.name); setSelectedFinish(''); }}
+                            className={`p-3 rounded-xl border-2 text-left transition-all duration-200 ${
+                              selectedMetal === m.name
+                                ? 'border-[#2c7a7b] bg-[#2c7a7b]/5 shadow-md'
+                                : 'border-slate-200 hover:border-slate-300 bg-white'
+                            }`}
+                            data-testid={`metal-${m.symbol}`}
+                          >
+                            <span className="text-xs font-bold block" style={{ color: m.color }}>{m.symbol}</span>
+                            <span className="text-xs font-medium text-slate-700 block mt-1">{m.name}</span>
+                          </button>
+                        ))}
                       </div>
                     </div>
+
+                    {/* Finish selection - only show for actual metals */}
+                    {currentMetal && selectedMetal !== 'Keine Beschichtung' && selectedMetal !== 'Firmament' && (
+                      <div>
+                        <Label className="text-slate-800 font-semibold mb-3 block">Ausführung</Label>
+                        <div className="flex flex-wrap gap-2">
+                          {currentMetal.finishes.map(f => (
+                            <button
+                              type="button"
+                              key={f.id}
+                              onClick={() => setSelectedFinish(f.name)}
+                              className={`px-4 py-2 rounded-full border-2 text-sm font-medium transition-all duration-200 ${
+                                selectedFinish === f.name
+                                  ? 'border-[#2c7a7b] bg-[#2c7a7b] text-white shadow-md'
+                                  : 'border-slate-200 text-slate-700 hover:border-slate-300 bg-white'
+                              }`}
+                              data-testid={`finish-${f.id}`}
+                            >
+                              {f.name}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Reference image for non-upload paths */}
                     {selectedPath !== 'upload' && (
