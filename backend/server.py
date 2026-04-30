@@ -183,7 +183,7 @@ async def submit_contact(form: ContactFormRequest):
 
     # Send notification email to company
     await send_email_via_resend(
-        to_email="Service@Kathodik.com",
+        to_email="service@kathodik.com",
         subject=f"Neue Kontaktanfrage von {form.name}",
         html_content=f"""
         <h2>Neue Kontaktanfrage</h2>
