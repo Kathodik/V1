@@ -59,6 +59,7 @@ const AIThreeDConfigurator = () => {
   const [orderComplete, setOrderComplete] = useState(false);
   const [orderId, setOrderId] = useState('');
   const [contactData, setContactData] = useState({ name: '', email: '', phone: '' });
+  const [showMetalPicker, setShowMetalPicker] = useState(false);
 
   const currentMetal = metals.find(m => m.name === selectedMetal);
 
@@ -300,54 +301,23 @@ const AIThreeDConfigurator = () => {
                     {/* Metal selection */}
                     <div>
                       <Label className="text-slate-800 font-semibold mb-3 block">Metall-Beschichtung</Label>
-                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                        <button
-                          type="button"
-                          onClick={() => { setSelectedMetal('Keine Beschichtung'); setSelectedFinish(''); }}
-                          className={`p-3 rounded-xl border-2 text-left transition-all duration-200 ${
-                            selectedMetal === 'Keine Beschichtung'
-                              ? 'border-[#2c7a7b] bg-[#2c7a7b]/5 shadow-md'
-                              : 'border-slate-200 hover:border-slate-300 bg-white'
-                          }`}
-                          data-testid="metal-none"
-                        >
-                          <span className="text-xs font-bold text-slate-400 block">—</span>
-                          <span className="text-xs font-medium text-slate-700 block mt-1">Keine</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => { setSelectedMetal('Firmament'); setSelectedFinish(''); }}
-                          className={`p-3 rounded-xl border-2 text-left transition-all duration-200 ${
-                            selectedMetal === 'Firmament'
-                              ? 'border-[#2c7a7b] bg-[#2c7a7b]/5 shadow-md'
-                              : 'border-slate-200 hover:border-slate-300 bg-white'
-                          }`}
-                          data-testid="metal-firmament"
-                        >
-                          <span className="text-xs font-bold text-indigo-500 block">FM</span>
-                          <span className="text-xs font-medium text-slate-700 block mt-1">Firmament</span>
-                        </button>
-                        {metals.map(m => (
-                          <button
-                            type="button"
-                            key={m.symbol}
-                            onClick={() => { setSelectedMetal(m.name); setSelectedFinish(''); }}
-                            className={`p-3 rounded-xl border-2 text-left transition-all duration-200 ${
-                              selectedMetal === m.name
-                                ? 'border-[#2c7a7b] bg-[#2c7a7b]/5 shadow-md'
-                                : 'border-slate-200 hover:border-slate-300 bg-white'
-                            }`}
-                            data-testid={`metal-${m.symbol}`}
-                          >
-                            <span className="text-xs font-bold block" style={{ color: m.color }}>{m.symbol}</span>
-                            <span className="text-xs font-medium text-slate-700 block mt-1">{m.name}</span>
-                          </button>
-                        ))}
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowMetalPicker(true)}
+                        className="w-full p-4 rounded-xl border-2 border-slate-200 hover:border-[#2c7a7b] bg-white text-left transition-all duration-200 flex items-center justify-between"
+                        data-testid="metal-select-trigger"
+                      >
+                        {selectedMetal ? (
+                          <span className="text-slate-800 font-medium">{selectedMetal}</span>
+                        ) : (
+                          <span className="text-slate-400">Metall wählen...</span>
+                        )}
+                        <ArrowRight className="h-4 w-4 text-slate-400" />
+                      </button>
                     </div>
 
                     {/* Finish selection - only show for actual metals */}
-                    {currentMetal && selectedMetal !== 'Keine Beschichtung' && selectedMetal !== 'Firmament' && (
+                    {currentMetal && selectedMetal !== 'Keine Beschichtung' && (
                       <div>
                         <Label className="text-slate-800 font-semibold mb-3 block">Ausführung</Label>
                         <div className="flex flex-wrap gap-2">
@@ -366,6 +336,45 @@ const AIThreeDConfigurator = () => {
                               {f.name}
                             </button>
                           ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Metal Picker Modal */}
+                    {showMetalPicker && (
+                      <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4" onClick={() => setShowMetalPicker(false)} data-testid="metal-picker-modal">
+                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] overflow-y-auto p-6" onClick={(e) => e.stopPropagation()}>
+                          <h3 className="text-lg font-bold text-slate-800 mb-4">Metall-Beschichtung wählen</h3>
+                          <div className="space-y-2">
+                            <button
+                              type="button"
+                              onClick={() => { setSelectedMetal('Keine Beschichtung'); setSelectedFinish(''); setShowMetalPicker(false); }}
+                              className={`w-full p-3 rounded-xl border-2 text-left transition-all flex items-center space-x-3 ${
+                                selectedMetal === 'Keine Beschichtung' ? 'border-[#2c7a7b] bg-[#2c7a7b]/5' : 'border-slate-200 hover:border-slate-300'
+                              }`}
+                              data-testid="metal-pick-none"
+                            >
+                              <span className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-sm font-bold text-slate-400">—</span>
+                              <span className="font-medium text-slate-800">Keine Beschichtung</span>
+                            </button>
+                            {metals.map(m => (
+                              <button
+                                type="button"
+                                key={m.symbol}
+                                onClick={() => { setSelectedMetal(m.name); setSelectedFinish(''); setShowMetalPicker(false); }}
+                                className={`w-full p-3 rounded-xl border-2 text-left transition-all flex items-center space-x-3 ${
+                                  selectedMetal === m.name ? 'border-[#2c7a7b] bg-[#2c7a7b]/5' : 'border-slate-200 hover:border-slate-300'
+                                }`}
+                                data-testid={`metal-pick-${m.symbol}`}
+                              >
+                                <span className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold" style={{ backgroundColor: `${m.color}20`, color: m.color }}>{m.symbol}</span>
+                                <div>
+                                  <span className="font-medium text-slate-800 block">{m.name}</span>
+                                  <span className="text-xs text-slate-500">{m.description}</span>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
                         </div>
                       </div>
                     )}
