@@ -5,7 +5,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { LogIn, UserPlus, Loader2, MailCheck, CheckCircle2 } from 'lucide-react';
+import { LogIn, UserPlus, Loader2, MailCheck, CheckCircle2, KeyRound, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'sonner';
 import axios from 'axios';
@@ -20,6 +20,13 @@ const PortalLogin = () => {
   const [loading, setLoading] = useState(false);
   const [verificationSent, setVerificationSent] = useState(false);
   const [verificationSuccess, setVerificationSuccess] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [resetToken, setResetToken] = useState('');
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [resetSent, setResetSent] = useState(false);
 
   // Login state
   const [loginData, setLoginData] = useState({ email: '', password: '' });
@@ -33,11 +40,16 @@ const PortalLogin = () => {
     phone: ''
   });
 
-  // Handle verification token from URL
+  // Handle verification token or reset token from URL
   useEffect(() => {
     const verifyToken = searchParams.get('verify');
     if (verifyToken) {
       verifyEmail(verifyToken);
+    }
+    const resetParam = searchParams.get('reset');
+    if (resetParam) {
+      setResetToken(resetParam);
+      setShowResetPassword(true);
     }
   }, [searchParams]);
 
@@ -243,6 +255,16 @@ const PortalLogin = () => {
                         </>
                       )}
                     </Button>
+                    <div className="text-center mt-3">
+                      <button
+                        type="button"
+                        onClick={() => setShowForgotPassword(true)}
+                        className="text-sm text-[#2c7a7b] hover:underline cursor-pointer"
+                        data-testid="forgot-password-link"
+                      >
+                        Passwort vergessen?
+                      </button>
+                    </div>
                   </form>
                 </TabsContent>
 
@@ -364,6 +386,136 @@ const PortalLogin = () => {
               ← Zurück zur Startseite
             </Button>
           </div>
+
+          {/* Forgot Password Modal */}
+          {showForgotPassword && (
+            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" data-testid="forgot-password-modal">
+              <Card className="w-full max-w-md bg-white">
+                <CardContent className="p-6">
+                  {resetSent ? (
+                    <div className="text-center">
+                      <MailCheck className="h-12 w-12 text-[#2c7a7b] mx-auto mb-4" />
+                      <h3 className="text-xl font-bold text-slate-800 mb-2">E-Mail gesendet!</h3>
+                      <p className="text-slate-600 text-sm mb-4">
+                        Falls ein Konto mit dieser Adresse existiert, wurde ein Link zum Zurücksetzen gesendet.
+                      </p>
+                      <Button onClick={() => { setShowForgotPassword(false); setResetSent(false); }} className="w-full bg-[#2c7a7b] hover:bg-[#285e61] text-white">
+                        Schließen
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex items-center space-x-3 mb-6">
+                        <KeyRound className="h-6 w-6 text-[#2c7a7b]" />
+                        <h3 className="text-xl font-bold text-slate-800">Passwort vergessen?</h3>
+                      </div>
+                      <p className="text-slate-600 text-sm mb-4">
+                        Geben Sie Ihre E-Mail-Adresse ein und wir senden Ihnen einen Link zum Zurücksetzen.
+                      </p>
+                      <form onSubmit={async (e) => {
+                        e.preventDefault();
+                        setLoading(true);
+                        try {
+                          await axios.post(`${API}/auth/forgot-password`, { email: forgotEmail });
+                          setResetSent(true);
+                          toast.success('Reset-E-Mail gesendet!');
+                        } catch (error) {
+                          toast.error('Fehler beim Senden der E-Mail');
+                        }
+                        setLoading(false);
+                      }}>
+                        <Label className="text-slate-800 mb-2 block font-semibold">E-Mail-Adresse</Label>
+                        <Input
+                          type="email"
+                          value={forgotEmail}
+                          onChange={(e) => setForgotEmail(e.target.value)}
+                          placeholder="ihre@email.de"
+                          className="bg-white border-slate-300 mb-4"
+                          required
+                          data-testid="forgot-email-input"
+                        />
+                        <div className="flex gap-3">
+                          <Button type="button" variant="outline" className="flex-1" onClick={() => setShowForgotPassword(false)}>
+                            Abbrechen
+                          </Button>
+                          <Button type="submit" className="flex-1 bg-[#2c7a7b] hover:bg-[#285e61] text-white" disabled={loading} data-testid="forgot-submit-btn">
+                            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Link senden'}
+                          </Button>
+                        </div>
+                      </form>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Reset Password Modal */}
+          {showResetPassword && (
+            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" data-testid="reset-password-modal">
+              <Card className="w-full max-w-md bg-white">
+                <CardContent className="p-6">
+                  <div className="flex items-center space-x-3 mb-6">
+                    <KeyRound className="h-6 w-6 text-[#2c7a7b]" />
+                    <h3 className="text-xl font-bold text-slate-800">Neues Passwort setzen</h3>
+                  </div>
+                  <form onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (newPassword !== confirmNewPassword) {
+                      toast.error('Passwörter stimmen nicht überein');
+                      return;
+                    }
+                    if (newPassword.length < 6) {
+                      toast.error('Passwort muss mindestens 6 Zeichen lang sein');
+                      return;
+                    }
+                    setLoading(true);
+                    try {
+                      await axios.post(`${API}/auth/reset-password`, { token: resetToken, new_password: newPassword });
+                      toast.success('Passwort erfolgreich geändert!');
+                      setShowResetPassword(false);
+                      setNewPassword('');
+                      setConfirmNewPassword('');
+                      navigate('/portal/login');
+                    } catch (error) {
+                      toast.error(error.response?.data?.detail || 'Fehler beim Zurücksetzen');
+                    }
+                    setLoading(false);
+                  }}>
+                    <div className="space-y-4">
+                      <div>
+                        <Label className="text-slate-800 mb-2 block font-semibold">Neues Passwort</Label>
+                        <Input
+                          type="password"
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          placeholder="Mindestens 6 Zeichen"
+                          className="bg-white border-slate-300"
+                          required
+                          data-testid="new-password-input"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-slate-800 mb-2 block font-semibold">Passwort bestätigen</Label>
+                        <Input
+                          type="password"
+                          value={confirmNewPassword}
+                          onChange={(e) => setConfirmNewPassword(e.target.value)}
+                          placeholder="Passwort wiederholen"
+                          className="bg-white border-slate-300"
+                          required
+                          data-testid="confirm-new-password-input"
+                        />
+                      </div>
+                    </div>
+                    <Button type="submit" className="w-full mt-6 bg-[#2c7a7b] hover:bg-[#285e61] text-white py-6" disabled={loading} data-testid="reset-submit-btn">
+                      {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Passwort ändern'}
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
+            </div>
+          )}
         </div>
       </div>
     </div>

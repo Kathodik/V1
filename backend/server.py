@@ -360,6 +360,73 @@ async def get_me(current_user: User = Depends(get_current_user)):
     """Get current user info"""
     return current_user
 
+# Password Reset endpoints
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+@api_router.post("/auth/forgot-password")
+async def forgot_password(request: ForgotPasswordRequest):
+    """Send password reset email"""
+    user = await db.users.find_one({"email": request.email})
+    if not user:
+        # Don't reveal if email exists
+        return {"message": "Falls ein Konto mit dieser E-Mail existiert, wurde ein Reset-Link gesendet."}
+    
+    # Generate reset token
+    reset_token = secrets.token_urlsafe(32)
+    expires_at = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
+    
+    await db.users.update_one(
+        {"email": request.email},
+        {"$set": {"reset_token": reset_token, "reset_token_expires": expires_at}}
+    )
+    
+    # Send reset email
+    frontend_url = os.environ.get('FRONTEND_URL', '')
+    reset_url = f"{frontend_url}/portal/login?reset={reset_token}"
+    
+    await send_email_via_resend(
+        to_email=request.email,
+        subject="Kathodik - Passwort zurücksetzen",
+        html_content=f"""
+        <h2>Passwort zurücksetzen</h2>
+        <p>Sie haben angefordert, Ihr Passwort zurückzusetzen.</p>
+        <p>Klicken Sie auf den folgenden Link, um ein neues Passwort festzulegen:</p>
+        <p><a href="{reset_url}" style="display:inline-block;padding:12px 24px;background:#2c7a7b;color:white;text-decoration:none;border-radius:8px;font-weight:bold;">Neues Passwort setzen</a></p>
+        <p style="color:#666;font-size:12px;">Dieser Link ist 1 Stunde lang gültig. Falls Sie diese Anfrage nicht gestellt haben, ignorieren Sie diese E-Mail.</p>
+        <br>
+        <p>Mit freundlichen Grüßen,</p>
+        <p><strong>Kathodik - Galvanotechnik</strong></p>
+        """
+    )
+    
+    return {"message": "Falls ein Konto mit dieser E-Mail existiert, wurde ein Reset-Link gesendet."}
+
+@api_router.post("/auth/reset-password")
+async def reset_password(request: ResetPasswordRequest):
+    """Reset password with token"""
+    user = await db.users.find_one({"reset_token": request.token})
+    if not user:
+        raise HTTPException(status_code=400, detail="Ungültiger oder abgelaufener Reset-Token")
+    
+    # Check expiry
+    expires = user.get("reset_token_expires", "")
+    if expires and datetime.fromisoformat(expires) < datetime.now(timezone.utc):
+        raise HTTPException(status_code=400, detail="Reset-Token ist abgelaufen. Bitte erneut anfordern.")
+    
+    # Update password
+    new_hash = get_password_hash(request.new_password)
+    await db.users.update_one(
+        {"email": user["email"]},
+        {"$set": {"password_hash": new_hash}, "$unset": {"reset_token": "", "reset_token_expires": ""}}
+    )
+    
+    return {"message": "Passwort erfolgreich geändert. Sie können sich jetzt anmelden."}
+
 # Order endpoints
 @api_router.post("/orders", response_model=Order)
 async def create_order(order: OrderCreate, current_user: User = Depends(get_current_user)):
