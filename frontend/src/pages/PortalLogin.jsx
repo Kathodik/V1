@@ -59,7 +59,19 @@ const PortalLogin = () => {
     
     if (result.success) {
       toast.success('Erfolgreich angemeldet!');
-      navigate('/portal');
+      // Check if user is admin and redirect accordingly
+      try {
+        const res = await axios.get(`${API}/auth/me`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        });
+        if (res.data.is_admin) {
+          navigate('/admin');
+        } else {
+          navigate('/portal');
+        }
+      } catch {
+        navigate('/portal');
+      }
     } else {
       toast.error(result.error || 'Anmeldung fehlgeschlagen');
     }

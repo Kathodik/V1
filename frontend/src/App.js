@@ -13,6 +13,7 @@ import Contact from './pages/Contact';
 import Imprint from './pages/Imprint';
 import PortalLogin from './pages/PortalLogin';
 import CustomerPortal from './pages/CustomerPortal';
+import AdminPortal from './pages/AdminPortal';
 import './App.css';
 
 function App() {
@@ -31,6 +32,7 @@ function App() {
               <Route path="/imprint" element={<Imprint />} />
               <Route path="/portal/login" element={<PortalLogin />} />
               <Route path="/portal" element={<CustomerPortal />} />
+              <Route path="/admin" element={<AdminPortal />} />
             </Routes>
           </main>
           <Footer />

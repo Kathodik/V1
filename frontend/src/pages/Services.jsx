@@ -6,11 +6,13 @@ import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
-import { Upload, Package, Ruler, Info } from 'lucide-react';
+import { Checkbox } from '../components/ui/checkbox';
+import { Upload, Package, Ruler, Info, PauseCircle, Bell, Save } from 'lucide-react';
 import { AnimateOnScroll } from '../components/AnimateOnScroll';
 import { useParallax } from '../hooks/useScrollAnimation';
 import { metals, companyInfo } from '../data/mockData';
 import { toast } from 'sonner';
+import axios from 'axios';
 
 /* ── Per-element realistic texture config ── */
 const metalTextures = {
@@ -336,8 +338,21 @@ const Services = () => {
   const [description, setDescription] = useState('');
   const [images, setImages] = useState([]);
   const [rotation, setRotation] = useState({ x: 0, y: 0 });
+  const [acceptingOrders, setAcceptingOrders] = useState(true);
+  const [pauseMessage, setPauseMessage] = useState('');
+  const [showSaveForm, setShowSaveForm] = useState(false);
+  const [saveFormData, setSaveFormData] = useState({ name: '', email: '', phone: '', notify: true });
   const scrollY = useParallax();
   const detailRef = useRef(null);
+
+  useEffect(() => {
+    axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/settings/accepting-orders`)
+      .then(res => {
+        setAcceptingOrders(res.data.accepting_orders);
+        setPauseMessage(res.data.pause_message || '');
+      })
+      .catch(() => {});
+  }, []);
 
   const handleMetalSelect = (metal) => {
     setSelectedMetal(metal);
@@ -362,9 +377,40 @@ const Services = () => {
       toast.error('Bitte füllen Sie alle Pflichtfelder aus');
       return;
     }
+    if (!acceptingOrders) {
+      setShowSaveForm(true);
+      return;
+    }
     const finish = selectedMetal.finishes.find(f => f.id === selectedFinish);
     toast.success(`Anfrage erfolgreich! ${selectedMetal.name} - ${finish.name}`);
     setSelectedMetal(null);
+  };
+
+  const handleSaveRequest = async (e) => {
+    e.preventDefault();
+    if (!saveFormData.name || !saveFormData.email) {
+      toast.error('Bitte Name und E-Mail angeben');
+      return;
+    }
+    try {
+      const finish = selectedMetal.finishes.find(f => f.id === selectedFinish);
+      await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/saved-requests`, {
+        name: saveFormData.name,
+        email: saveFormData.email,
+        phone: saveFormData.phone,
+        metal: selectedMetal.name,
+        finish: finish?.name || '',
+        quantity: parseInt(quantity) || 1,
+        message: description,
+        notify_when_open: saveFormData.notify
+      });
+      toast.success('Anfrage gespeichert! Sie werden benachrichtigt.');
+      setShowSaveForm(false);
+      setSelectedMetal(null);
+      setSaveFormData({ name: '', email: '', phone: '', notify: true });
+    } catch (error) {
+      toast.error('Fehler beim Speichern');
+    }
   };
 
   // Group metals by period
@@ -561,7 +607,54 @@ const Services = () => {
               <AnimateOnScroll variant="fadeLeft" duration="normal" delay={150}>
                 <Card className="bg-white border border-slate-200 shadow-lg">
                   <CardContent className="p-8">
-                    <h3 className="text-2xl font-bold text-slate-800 mb-6">Anfrage stellen</h3>
+                    {/* Paused Banner */}
+                    {!acceptingOrders && (
+                      <Alert className="mb-6 bg-amber-50 border-amber-300" data-testid="services-paused-banner">
+                        <PauseCircle className="h-5 w-5 text-amber-600" />
+                        <AlertDescription className="text-amber-800">
+                          <strong>Auftragsannahme pausiert</strong>
+                          <p className="mt-1 text-sm">{pauseMessage || 'Wir nehmen derzeit keine neuen Aufträge an. Sie können Ihre Anfrage speichern.'}</p>
+                        </AlertDescription>
+                      </Alert>
+                    )}
+
+                    <h3 className="text-2xl font-bold text-slate-800 mb-6">
+                      {acceptingOrders ? 'Anfrage stellen' : 'Anfrage speichern'}
+                    </h3>
+
+                    {/* Save Form (when paused and user submits) */}
+                    {showSaveForm ? (
+                      <form onSubmit={handleSaveRequest} className="space-y-5">
+                        <p className="text-sm text-slate-600 mb-4">
+                          Geben Sie Ihre Kontaktdaten an, um die Anfrage zu speichern:
+                        </p>
+                        <div>
+                          <Label className="text-slate-800 mb-2 block font-semibold">Name *</Label>
+                          <Input value={saveFormData.name} onChange={(e) => setSaveFormData({...saveFormData, name: e.target.value})} placeholder="Ihr Name" className="bg-white border-slate-200" required data-testid="save-name" />
+                        </div>
+                        <div>
+                          <Label className="text-slate-800 mb-2 block font-semibold">E-Mail *</Label>
+                          <Input type="email" value={saveFormData.email} onChange={(e) => setSaveFormData({...saveFormData, email: e.target.value})} placeholder="ihre@email.de" className="bg-white border-slate-200" required data-testid="save-email" />
+                        </div>
+                        <div>
+                          <Label className="text-slate-800 mb-2 block font-semibold">Telefon</Label>
+                          <Input type="tel" value={saveFormData.phone} onChange={(e) => setSaveFormData({...saveFormData, phone: e.target.value})} placeholder="Optional" className="bg-white border-slate-200" data-testid="save-phone" />
+                        </div>
+                        <div className="flex items-center space-x-3 p-4 bg-blue-50 rounded-xl border border-blue-200">
+                          <Checkbox id="notify-service" checked={saveFormData.notify} onCheckedChange={(v) => setSaveFormData({...saveFormData, notify: v})} data-testid="save-notify" />
+                          <Label htmlFor="notify-service" className="text-sm text-blue-800 cursor-pointer">
+                            <Bell className="h-4 w-4 inline mr-1" />
+                            Benachrichtigen, sobald wieder Aufträge angenommen werden
+                          </Label>
+                        </div>
+                        <Button type="submit" className="w-full bg-[#2c7a7b] hover:bg-[#285e61] text-white py-6 text-lg rounded-full" data-testid="save-request-btn">
+                          <Save className="h-5 w-5 mr-2" /> Anfrage speichern
+                        </Button>
+                        <Button type="button" variant="outline" className="w-full" onClick={() => setShowSaveForm(false)}>
+                          Zurück
+                        </Button>
+                      </form>
+                    ) : (
                     <form onSubmit={handleSubmit} className="space-y-6">
                       {selectedMetal.finishes.length > 1 && (
                         <div>
@@ -626,9 +719,10 @@ const Services = () => {
                       </Alert>
 
                       <Button type="submit" className="w-full bg-[#2c7a7b] hover:bg-[#285e61] text-white py-6 text-lg rounded-full transition-all duration-300" data-testid="submit-order-btn">
-                        Anfrage absenden
+                        {acceptingOrders ? 'Anfrage absenden' : 'Anfrage speichern'}
                       </Button>
                     </form>
+                    )}
                   </CardContent>
                 </Card>
               </AnimateOnScroll>

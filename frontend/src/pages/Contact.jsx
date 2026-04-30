@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
-import { Phone, Mail, MapPin, Send, Loader2 } from 'lucide-react';
+import { Checkbox } from '../components/ui/checkbox';
+import { Alert, AlertDescription } from '../components/ui/alert';
+import { Phone, Mail, MapPin, Send, Loader2, PauseCircle, Bell, Save } from 'lucide-react';
 import { AnimateOnScroll } from '../components/AnimateOnScroll';
 import { useParallax } from '../hooks/useScrollAnimation';
 import { companyInfo } from '../data/mockData';
@@ -15,25 +17,46 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 const Contact = () => {
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    message: ''
-  });
+  const [formData, setFormData] = useState({ name: '', email: '', phone: '', message: '' });
   const [loading, setLoading] = useState(false);
+  const [acceptingOrders, setAcceptingOrders] = useState(true);
+  const [pauseMessage, setPauseMessage] = useState('');
+  const [notifyMe, setNotifyMe] = useState(true);
   const scrollY = useParallax();
+
+  useEffect(() => {
+    axios.get(`${API}/settings/accepting-orders`)
+      .then(res => {
+        setAcceptingOrders(res.data.accepting_orders);
+        setPauseMessage(res.data.pause_message || '');
+      })
+      .catch(() => {});
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await axios.post(`${API}/contact`, formData);
-      toast.success('Nachricht erfolgreich gesendet! Wir melden uns zeitnah bei Ihnen.');
+      if (acceptingOrders) {
+        await axios.post(`${API}/contact`, formData);
+        toast.success('Nachricht erfolgreich gesendet! Wir melden uns zeitnah bei Ihnen.');
+      } else {
+        await axios.post(`${API}/saved-requests`, {
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          message: formData.message,
+          notify_when_open: notifyMe
+        });
+        toast.success(notifyMe
+          ? 'Anfrage gespeichert! Sie werden benachrichtigt, sobald wir wieder Auftraege annehmen.'
+          : 'Anfrage gespeichert! Wir werden uns melden, sobald wir wieder verfuegbar sind.'
+        );
+      }
       setFormData({ name: '', email: '', phone: '', message: '' });
     } catch (error) {
-      console.error('Error sending contact form:', error);
-      toast.error(error.response?.data?.detail || 'Fehler beim Senden der Nachricht');
+      console.error('Error:', error);
+      toast.error(error.response?.data?.detail || 'Fehler beim Senden');
     } finally {
       setLoading(false);
     }
@@ -43,14 +66,8 @@ const Contact = () => {
     <div className="bg-white">
       {/* Hero banner */}
       <section className="relative py-28 overflow-hidden">
-        <div
-          className="absolute inset-0 bg-gradient-to-b from-slate-50 to-white"
-          style={{ transform: `translateY(${scrollY * 0.1}px)` }}
-        />
-        <div
-          className="absolute bottom-0 right-0 w-[500px] h-[500px] rounded-full opacity-[0.04]"
-          style={{ background: 'radial-gradient(circle, #2c7a7b 0%, transparent 70%)' }}
-        />
+        <div className="absolute inset-0 bg-gradient-to-b from-slate-50 to-white" style={{ transform: `translateY(${scrollY * 0.1}px)` }} />
+        <div className="absolute bottom-0 right-0 w-[500px] h-[500px] rounded-full opacity-[0.04]" style={{ background: 'radial-gradient(circle, #2c7a7b 0%, transparent 70%)' }} />
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <AnimateOnScroll variant="fadeUp" duration="slow">
             <div className="text-center">
@@ -77,9 +94,7 @@ const Contact = () => {
               <AnimateOnScroll variant="fadeRight" duration="normal">
                 <div className="space-y-8">
                   <div>
-                    <p className="text-sm font-semibold tracking-[0.15em] uppercase text-[#2c7a7b] mb-6">
-                      Kontaktdaten
-                    </p>
+                    <p className="text-sm font-semibold tracking-[0.15em] uppercase text-[#2c7a7b] mb-6">Kontaktdaten</p>
                     <div className="space-y-6">
                       {[
                         { icon: Phone, label: 'Telefon', value: companyInfo.phone, href: `tel:${companyInfo.phone}` },
@@ -119,79 +134,62 @@ const Contact = () => {
             {/* Contact Form */}
             <div className="lg:col-span-3">
               <AnimateOnScroll variant="fadeLeft" duration="normal" delay={150}>
+                {/* Paused Banner */}
+                {!acceptingOrders && (
+                  <Alert className="mb-6 bg-amber-50 border-amber-300" data-testid="paused-banner">
+                    <PauseCircle className="h-5 w-5 text-amber-600" />
+                    <AlertDescription className="text-amber-800">
+                      <strong>Auftragsannahme pausiert</strong>
+                      <p className="mt-1 text-sm">
+                        {pauseMessage || 'Wir nehmen derzeit keine neuen Aufträge an. Sie können Ihre Anfrage trotzdem speichern und werden benachrichtigt, sobald wir wieder verfügbar sind.'}
+                      </p>
+                    </AlertDescription>
+                  </Alert>
+                )}
+
                 <Card className="bg-white border border-slate-200 shadow-lg">
                   <CardContent className="p-8">
                     <h2 className="text-2xl font-bold text-slate-800 mb-6">
-                      Nachricht senden
+                      {acceptingOrders ? 'Nachricht senden' : 'Anfrage speichern'}
                     </h2>
                     <form onSubmit={handleSubmit} className="space-y-5">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                           <Label htmlFor="name" className="text-slate-700 font-semibold mb-2 block">Name *</Label>
-                          <Input
-                            id="name"
-                            value={formData.name}
-                            onChange={(e) => setFormData({...formData, name: e.target.value})}
-                            placeholder="Ihr Name"
-                            className="bg-white border-slate-200 focus:border-[#2c7a7b]"
-                            required
-                            data-testid="contact-name"
-                          />
+                          <Input id="name" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} placeholder="Ihr Name" className="bg-white border-slate-200 focus:border-[#2c7a7b]" required data-testid="contact-name" />
                         </div>
                         <div>
                           <Label htmlFor="email" className="text-slate-700 font-semibold mb-2 block">E-Mail *</Label>
-                          <Input
-                            id="email"
-                            type="email"
-                            value={formData.email}
-                            onChange={(e) => setFormData({...formData, email: e.target.value})}
-                            placeholder="ihre@email.de"
-                            className="bg-white border-slate-200 focus:border-[#2c7a7b]"
-                            required
-                            data-testid="contact-email"
-                          />
+                          <Input id="email" type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} placeholder="ihre@email.de" className="bg-white border-slate-200 focus:border-[#2c7a7b]" required data-testid="contact-email" />
                         </div>
                       </div>
                       <div>
                         <Label htmlFor="phone" className="text-slate-700 font-semibold mb-2 block">Telefon</Label>
-                        <Input
-                          id="phone"
-                          type="tel"
-                          value={formData.phone}
-                          onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                          placeholder="Ihre Telefonnummer"
-                          className="bg-white border-slate-200 focus:border-[#2c7a7b]"
-                          data-testid="contact-phone"
-                        />
+                        <Input id="phone" type="tel" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} placeholder="Ihre Telefonnummer" className="bg-white border-slate-200 focus:border-[#2c7a7b]" data-testid="contact-phone" />
                       </div>
                       <div>
                         <Label htmlFor="message" className="text-slate-700 font-semibold mb-2 block">Nachricht *</Label>
-                        <Textarea
-                          id="message"
-                          value={formData.message}
-                          onChange={(e) => setFormData({...formData, message: e.target.value})}
-                          placeholder="Beschreiben Sie Ihr Projekt oder Ihre Frage..."
-                          className="bg-white border-slate-200 focus:border-[#2c7a7b] min-h-36"
-                          required
-                          data-testid="contact-message"
-                        />
+                        <Textarea id="message" value={formData.message} onChange={(e) => setFormData({...formData, message: e.target.value})} placeholder="Beschreiben Sie Ihr Projekt oder Ihre Frage..." className="bg-white border-slate-200 focus:border-[#2c7a7b] min-h-36" required data-testid="contact-message" />
                       </div>
-                      <Button
-                        type="submit"
-                        className="w-full bg-[#2c7a7b] hover:bg-[#285e61] text-white py-6 text-lg rounded-full transition-all duration-300 shadow-lg shadow-[#2c7a7b]/20"
-                        disabled={loading}
-                        data-testid="contact-submit-btn"
-                      >
+
+                      {/* Notification opt-in when paused */}
+                      {!acceptingOrders && (
+                        <div className="flex items-center space-x-3 p-4 bg-blue-50 rounded-xl border border-blue-200" data-testid="notify-checkbox-area">
+                          <Checkbox id="notify" checked={notifyMe} onCheckedChange={setNotifyMe} data-testid="notify-checkbox" />
+                          <Label htmlFor="notify" className="text-sm text-blue-800 cursor-pointer">
+                            <Bell className="h-4 w-4 inline mr-1" />
+                            Benachrichtigen Sie mich, sobald wieder Aufträge angenommen werden
+                          </Label>
+                        </div>
+                      )}
+
+                      <Button type="submit" className="w-full bg-[#2c7a7b] hover:bg-[#285e61] text-white py-6 text-lg rounded-full transition-all duration-300 shadow-lg shadow-[#2c7a7b]/20" disabled={loading} data-testid="contact-submit-btn">
                         {loading ? (
-                          <>
-                            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                            Wird gesendet...
-                          </>
+                          <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Wird gesendet...</>
+                        ) : acceptingOrders ? (
+                          <><Send className="mr-2 h-5 w-5" /> Nachricht senden</>
                         ) : (
-                          <>
-                            Nachricht senden
-                            <Send className="ml-2 h-5 w-5" />
-                          </>
+                          <><Save className="mr-2 h-5 w-5" /> Anfrage speichern</>
                         )}
                       </Button>
                     </form>

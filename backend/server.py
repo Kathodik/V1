@@ -412,6 +412,150 @@ async def update_order(order_id: str, update: OrderUpdate, current_user: User = 
     updated_order = await db.orders.find_one({"id": order_id})
     return Order(**updated_order)
 
+# ─── Settings Endpoints (Order Acceptance Toggle) ───
+class SettingsResponse(BaseModel):
+    accepting_orders: bool
+    pause_message: Optional[str] = None
+
+class SettingsUpdate(BaseModel):
+    accepting_orders: bool
+    pause_message: Optional[str] = None
+
+@api_router.get("/settings/accepting-orders", response_model=SettingsResponse)
+async def get_accepting_orders():
+    """Get current order acceptance status (public)"""
+    settings = await db.settings.find_one({"key": "accepting_orders"}, {"_id": 0})
+    if not settings:
+        return SettingsResponse(accepting_orders=True, pause_message=None)
+    return SettingsResponse(
+        accepting_orders=settings.get("value", True),
+        pause_message=settings.get("pause_message")
+    )
+
+@api_router.put("/settings/accepting-orders", response_model=SettingsResponse)
+async def update_accepting_orders(update: SettingsUpdate, current_user: User = Depends(get_current_user)):
+    """Toggle order acceptance (admin only)"""
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    await db.settings.update_one(
+        {"key": "accepting_orders"},
+        {"$set": {
+            "key": "accepting_orders",
+            "value": update.accepting_orders,
+            "pause_message": update.pause_message,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "updated_by": current_user.email
+        }},
+        upsert=True
+    )
+    
+    # If re-enabling, notify waitlisted users
+    if update.accepting_orders:
+        waitlist = await db.waitlist.find({"notified": {"$ne": True}}, {"_id": 0}).to_list(500)
+        for entry in waitlist:
+            await send_email_via_resend(
+                to_email=entry["email"],
+                subject="Kathodik - Wir nehmen wieder Aufträge an!",
+                html_content=f"""
+                <h2>Gute Nachrichten!</h2>
+                <p>Wir freuen uns, Ihnen mitteilen zu können, dass Kathodik wieder Aufträge entgegennimmt.</p>
+                <p>Besuchen Sie unsere Webseite, um Ihre Anfrage zu stellen:</p>
+                <p><a href="{os.environ.get('FRONTEND_URL', '')}/services" style="display:inline-block;padding:12px 24px;background:#2c7a7b;color:white;text-decoration:none;border-radius:8px;font-weight:bold;">Jetzt anfragen</a></p>
+                <br>
+                <p>Mit freundlichen Grüßen,</p>
+                <p><strong>Kathodik - Galvanotechnik</strong></p>
+                """
+            )
+            await db.waitlist.update_one(
+                {"email": entry["email"]},
+                {"$set": {"notified": True, "notified_at": datetime.now(timezone.utc).isoformat()}}
+            )
+    
+    return SettingsResponse(accepting_orders=update.accepting_orders, pause_message=update.pause_message)
+
+# ─── Waitlist Endpoints (Notification Signup) ───
+class WaitlistEntry(BaseModel):
+    email: EmailStr
+    name: Optional[str] = None
+
+class WaitlistResponse(BaseModel):
+    message: str
+    email: str
+
+@api_router.post("/waitlist", response_model=WaitlistResponse)
+async def join_waitlist(entry: WaitlistEntry):
+    """Sign up for notification when orders reopen"""
+    existing = await db.waitlist.find_one({"email": entry.email})
+    if existing:
+        return WaitlistResponse(message="Sie sind bereits auf der Warteliste", email=entry.email)
+    
+    await db.waitlist.insert_one({
+        "email": entry.email,
+        "name": entry.name,
+        "notified": False,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    return WaitlistResponse(message="Sie werden benachrichtigt, sobald wir wieder Aufträge annehmen", email=entry.email)
+
+@api_router.get("/waitlist")
+async def get_waitlist(current_user: User = Depends(get_current_user)):
+    """Get waitlist entries (admin only)"""
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    entries = await db.waitlist.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
+    return entries
+
+# ─── Saved Requests (for paused state) ───
+class SavedRequestCreate(BaseModel):
+    name: str
+    email: EmailStr
+    phone: Optional[str] = None
+    metal: Optional[str] = None
+    finish: Optional[str] = None
+    quantity: Optional[int] = None
+    message: Optional[str] = None
+    notify_when_open: bool = False
+
+class SavedRequestResponse(BaseModel):
+    id: str
+    message: str
+
+@api_router.post("/saved-requests", response_model=SavedRequestResponse)
+async def create_saved_request(request: SavedRequestCreate):
+    """Save a customer request for later (when orders are paused)"""
+    request_id = str(uuid.uuid4())
+    doc = {
+        "id": request_id,
+        **request.dict(),
+        "status": "saved",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.saved_requests.insert_one(doc)
+    
+    # If user wants notification, add to waitlist
+    if request.notify_when_open:
+        existing = await db.waitlist.find_one({"email": request.email})
+        if not existing:
+            await db.waitlist.insert_one({
+                "email": request.email,
+                "name": request.name,
+                "notified": False,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            })
+    
+    return SavedRequestResponse(id=request_id, message="Anfrage gespeichert")
+
+@api_router.get("/saved-requests")
+async def get_saved_requests(email: Optional[str] = None, current_user: User = Depends(get_current_user)):
+    """Get saved requests - own or all (admin)"""
+    if current_user.is_admin and not email:
+        query = {}
+    else:
+        query = {"email": email or current_user.email}
+    requests = await db.saved_requests.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
+    return requests
+
 # Include the router in the main app
 app.include_router(api_router)
 
