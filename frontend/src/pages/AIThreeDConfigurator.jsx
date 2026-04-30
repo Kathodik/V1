@@ -37,8 +37,8 @@ const pathOptions = [
   {
     id: 'ai_generate',
     icon: Sparkles,
-    title: 'KI-Konzept generieren',
-    desc: 'Beschreiben Sie Ihr Produkt und unsere KI erstellt ein fotorealistisches Konzeptbild',
+    title: 'Luigi – KI-Konzept generieren',
+    desc: 'Beschreiben Sie Ihr Produkt und Luigi erstellt ein fotorealistisches Konzeptbild',
     color: 'bg-teal-50 border-teal-200 hover:border-teal-400',
     iconColor: 'text-teal-600 bg-teal-100'
   }
@@ -168,7 +168,7 @@ const AIThreeDConfigurator = () => {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <AnimateOnScroll variant="fadeUp" duration="slow">
             <div className="text-center">
-              <p className="text-sm font-semibold tracking-[0.2em] uppercase text-[#2c7a7b] mb-4">Luigi</p>
+              <p className="text-sm font-semibold tracking-[0.2em] uppercase text-[#2c7a7b] mb-4">3D Konfigurator</p>
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-slate-800 mb-4" data-testid="configurator-heading">
                 Ihr Produkt. Unsere Technik.
               </h1>
@@ -379,15 +379,15 @@ const AIThreeDConfigurator = () => {
                   <CardContent className="p-8 space-y-6">
                     {selectedPath === 'ai_generate' ? (
                       <>
-                        <h2 className="text-2xl font-bold text-slate-800">KI-Konzeptbild</h2>
+                        <h2 className="text-2xl font-bold text-slate-800">Luigi – KI-Konzeptbild</h2>
                         <p className="text-slate-500 text-sm">
-                          Basierend auf Ihrer Beschreibung erstellt unsere KI ein fotorealistisches Konzeptbild.
+                          Basierend auf Ihrer Beschreibung erstellt Luigi ein fotorealistisches Konzeptbild.
                         </p>
 
                         {!conceptImage && !generating && (
                           <div className="bg-slate-50 rounded-2xl p-8 text-center">
                             <Sparkles className="h-12 w-12 text-[#2c7a7b] mx-auto mb-4" />
-                            <p className="text-slate-700 font-medium mb-2">Bereit zur Generierung</p>
+                            <p className="text-slate-700 font-medium mb-2">Luigi ist bereit</p>
                             <p className="text-sm text-slate-500 mb-6">"{description.slice(0, 100)}{description.length > 100 ? '...' : ''}"</p>
                             <Button
                               onClick={handleGenerateConcept}
@@ -402,7 +402,7 @@ const AIThreeDConfigurator = () => {
                         {generating && (
                           <div className="bg-slate-50 rounded-2xl p-12 text-center">
                             <Loader2 className="h-12 w-12 text-[#2c7a7b] animate-spin mx-auto mb-4" />
-                            <p className="text-slate-700 font-medium">KI generiert Ihr Konzeptbild...</p>
+                            <p className="text-slate-700 font-medium">Luigi erstellt Ihr Konzeptbild...</p>
                             <p className="text-sm text-slate-500 mt-2">Dies kann bis zu 60 Sekunden dauern</p>
                           </div>
                         )}

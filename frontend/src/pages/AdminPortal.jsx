@@ -349,7 +349,7 @@ const AdminPortal = () => {
                     </Card>
                   ) : (
                     configuratorOrders.map((order, i) => {
-                      const typeLabels = { upload: 'Eigene Datei', partner_model: 'Partner-Modellierung', ai_generate: 'KI-Konzept' };
+                      const typeLabels = { upload: 'Eigene Datei', partner_model: 'Partner-Modellierung', ai_generate: 'Luigi – KI-Konzept' };
                       const typeColors = { upload: 'bg-blue-100 text-blue-700', partner_model: 'bg-purple-100 text-purple-700', ai_generate: 'bg-teal-100 text-teal-700' };
                       return (
                         <Card key={i} className="bg-white border-slate-200">
