@@ -2,13 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
 import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
 import { Switch } from '../components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { Settings, Users, Bell, Package, LogOut, Mail, Clock } from 'lucide-react';
+import { Settings, Users, Bell, Package, LogOut, Mail, BarChart3, Eye, TrendingUp, Cookie } from 'lucide-react';
 import { AnimateOnScroll } from '../components/AnimateOnScroll';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'sonner';
@@ -25,6 +24,7 @@ const AdminPortal = () => {
   const [waitlist, setWaitlist] = useState([]);
   const [savedRequests, setSavedRequests] = useState([]);
   const [contactMessages, setContactMessages] = useState([]);
+  const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -39,17 +39,19 @@ const AdminPortal = () => {
     setLoading(true);
     try {
       const headers = { Authorization: `Bearer ${token}` };
-      const [settingsRes, waitlistRes, savedRes, contactRes] = await Promise.all([
+      const [settingsRes, waitlistRes, savedRes, contactRes, analyticsRes] = await Promise.all([
         axios.get(`${API}/settings/accepting-orders`),
         axios.get(`${API}/waitlist`, { headers }).catch(() => ({ data: [] })),
         axios.get(`${API}/saved-requests`, { headers }).catch(() => ({ data: [] })),
-        axios.get(`${API}/contact/messages`, { headers }).catch(() => ({ data: [] }))
+        axios.get(`${API}/contact/messages`, { headers }).catch(() => ({ data: [] })),
+        axios.get(`${API}/analytics/stats`, { headers }).catch(() => ({ data: null }))
       ]);
       setAcceptingOrders(settingsRes.data.accepting_orders);
       setPauseMessage(settingsRes.data.pause_message || '');
       setWaitlist(waitlistRes.data);
       setSavedRequests(savedRes.data);
       setContactMessages(contactRes.data);
+      setAnalytics(analyticsRes.data);
     } catch (error) {
       console.error('Error fetching admin data:', error);
     } finally {
@@ -75,7 +77,22 @@ const AdminPortal = () => {
     }
   };
 
+  const updatePauseMessage = async () => {
+    try {
+      const headers = { Authorization: `Bearer ${token}` };
+      await axios.put(`${API}/settings/accepting-orders`, {
+        accepting_orders: acceptingOrders,
+        pause_message: pauseMessage || null
+      }, { headers });
+      toast.success('Nachricht aktualisiert');
+    } catch (error) {
+      toast.error('Fehler beim Aktualisieren');
+    }
+  };
+
   if (!user || !user.is_admin) return null;
+
+  const maxViews = analytics?.daily_views ? Math.max(...analytics.daily_views.map(d => d.views), 1) : 1;
 
   return (
     <div className="bg-white min-h-screen">
@@ -107,7 +124,7 @@ const AdminPortal = () => {
                     <div>
                       <h2 className="text-xl font-bold text-slate-800">Auftragsannahme</h2>
                       <p className="text-slate-500 text-sm">
-                        {acceptingOrders ? 'Auftraege werden aktuell angenommen' : 'Auftraege sind aktuell pausiert'}
+                        {acceptingOrders ? 'Aufträge werden aktuell angenommen' : 'Aufträge sind aktuell pausiert'}
                       </p>
                     </div>
                   </div>
@@ -125,16 +142,16 @@ const AdminPortal = () => {
 
                 {!acceptingOrders && (
                   <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-xl">
-                    <Label className="text-sm font-semibold text-amber-800 mb-2 block">Nachricht fuer Kunden (optional):</Label>
+                    <Label className="text-sm font-semibold text-amber-800 mb-2 block">Nachricht für Kunden (optional):</Label>
                     <Textarea
                       value={pauseMessage}
                       onChange={(e) => setPauseMessage(e.target.value)}
-                      placeholder="z.B. Wir sind im Urlaub und nehmen ab dem 15. Januar wieder Auftraege an..."
+                      placeholder="z.B. Wir sind im Urlaub und nehmen ab dem 15. Januar wieder Aufträge an..."
                       className="bg-white border-amber-200 min-h-20"
                       data-testid="pause-message-input"
                     />
                     <Button
-                      onClick={toggleAcceptingOrders}
+                      onClick={updatePauseMessage}
                       variant="outline"
                       className="mt-3 border-amber-300 text-amber-700 hover:bg-amber-100"
                       data-testid="save-pause-message-btn"
@@ -149,21 +166,169 @@ const AdminPortal = () => {
 
           {/* Tabs */}
           <AnimateOnScroll variant="fadeUp" delay={200}>
-            <Tabs defaultValue="waitlist">
-              <TabsList className="grid w-full grid-cols-3 mb-6">
+            <Tabs defaultValue="analytics">
+              <TabsList className="grid w-full grid-cols-4 mb-6">
+                <TabsTrigger value="analytics">
+                  <BarChart3 className="h-4 w-4 mr-2" />
+                  Statistiken
+                </TabsTrigger>
                 <TabsTrigger value="waitlist">
                   <Bell className="h-4 w-4 mr-2" />
                   Warteliste ({waitlist.length})
                 </TabsTrigger>
                 <TabsTrigger value="saved">
                   <Package className="h-4 w-4 mr-2" />
-                  Gespeicherte Anfragen ({savedRequests.length})
+                  Anfragen ({savedRequests.length})
                 </TabsTrigger>
                 <TabsTrigger value="contact">
                   <Mail className="h-4 w-4 mr-2" />
-                  Kontaktanfragen ({contactMessages.length})
+                  Kontakt ({contactMessages.length})
                 </TabsTrigger>
               </TabsList>
+
+              {/* Analytics Tab */}
+              <TabsContent value="analytics">
+                {analytics ? (
+                  <div className="space-y-6">
+                    {/* KPI Cards */}
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                      <Card className="bg-white border-slate-200">
+                        <CardContent className="p-5">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+                              <Eye className="h-5 w-5 text-blue-600" />
+                            </div>
+                            <div>
+                              <p className="text-2xl font-bold text-slate-800">{analytics.today_views}</p>
+                              <p className="text-xs text-slate-500">Heute</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      <Card className="bg-white border-slate-200">
+                        <CardContent className="p-5">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
+                              <TrendingUp className="h-5 w-5 text-green-600" />
+                            </div>
+                            <div>
+                              <p className="text-2xl font-bold text-slate-800">{analytics.week_views}</p>
+                              <p className="text-xs text-slate-500">Diese Woche</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      <Card className="bg-white border-slate-200">
+                        <CardContent className="p-5">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
+                              <Users className="h-5 w-5 text-purple-600" />
+                            </div>
+                            <div>
+                              <p className="text-2xl font-bold text-slate-800">{analytics.unique_week}</p>
+                              <p className="text-xs text-slate-500">Besucher (Woche)</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      <Card className="bg-white border-slate-200">
+                        <CardContent className="p-5">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center">
+                              <Cookie className="h-5 w-5 text-amber-600" />
+                            </div>
+                            <div>
+                              <p className="text-2xl font-bold text-slate-800">{analytics.cookies_accepted}</p>
+                              <p className="text-xs text-slate-500">Cookies akzeptiert</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    {/* Chart: Daily Views */}
+                    <Card className="bg-white border-slate-200">
+                      <CardHeader>
+                        <CardTitle className="text-lg text-slate-800">Seitenaufrufe (letzte 7 Tage)</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex items-end justify-between h-40 gap-2">
+                          {analytics.daily_views.map((day, i) => (
+                            <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                              <span className="text-xs font-semibold text-slate-600">{day.views}</span>
+                              <div
+                                className="w-full bg-[#2c7a7b] rounded-t-md transition-all duration-500"
+                                style={{ height: `${Math.max((day.views / maxViews) * 100, 4)}%`, minHeight: '4px' }}
+                              />
+                              <span className="text-[10px] text-slate-400 mt-1">{day.date}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Top Pages + Cookie Stats */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      <Card className="bg-white border-slate-200">
+                        <CardHeader>
+                          <CardTitle className="text-lg text-slate-800">Top Seiten (30 Tage)</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-3">
+                            {analytics.top_pages.length === 0 ? (
+                              <p className="text-sm text-slate-400">Noch keine Daten</p>
+                            ) : (
+                              analytics.top_pages.map((page, i) => (
+                                <div key={i} className="flex items-center justify-between">
+                                  <span className="text-sm text-slate-700 font-medium truncate mr-4">{page.page === '/' ? 'Home' : page.page}</span>
+                                  <div className="flex items-center space-x-2">
+                                    <div className="w-24 h-2 bg-slate-100 rounded-full overflow-hidden">
+                                      <div
+                                        className="h-full bg-[#2c7a7b] rounded-full"
+                                        style={{ width: `${(page.count / (analytics.top_pages[0]?.count || 1)) * 100}%` }}
+                                      />
+                                    </div>
+                                    <span className="text-xs text-slate-500 w-8 text-right">{page.count}</span>
+                                  </div>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card className="bg-white border-slate-200">
+                        <CardHeader>
+                          <CardTitle className="text-lg text-slate-800">Cookie-Einwilligungen</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between p-3 bg-green-50 rounded-xl">
+                              <span className="text-sm font-medium text-green-800">Akzeptiert</span>
+                              <span className="text-xl font-bold text-green-700">{analytics.cookies_accepted}</span>
+                            </div>
+                            <div className="flex items-center justify-between p-3 bg-red-50 rounded-xl">
+                              <span className="text-sm font-medium text-red-800">Abgelehnt</span>
+                              <span className="text-xl font-bold text-red-700">{analytics.cookies_declined}</span>
+                            </div>
+                            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
+                              <span className="text-sm font-medium text-slate-700">Gesamt</span>
+                              <span className="text-xl font-bold text-slate-800">{analytics.total_views} Seitenaufrufe</span>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </div>
+                ) : (
+                  <Card className="bg-white border-slate-200">
+                    <CardContent className="p-8 text-center">
+                      <BarChart3 className="h-12 w-12 text-slate-300 mx-auto mb-3" />
+                      <p className="text-slate-500">Statistiken werden geladen...</p>
+                    </CardContent>
+                  </Card>
+                )}
+              </TabsContent>
 
               <TabsContent value="waitlist">
                 <div className="space-y-3">

@@ -5,6 +5,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import FloatingChatButton from './components/FloatingChatButton';
+import CookieConsent from './components/CookieConsent';
 import Home from './pages/Home';
 import Services from './pages/Services';
 import AIThreeDConfigurator from './pages/AIThreeDConfigurator';
@@ -14,31 +15,40 @@ import Imprint from './pages/Imprint';
 import PortalLogin from './pages/PortalLogin';
 import CustomerPortal from './pages/CustomerPortal';
 import AdminPortal from './pages/AdminPortal';
+import useAnalytics from './hooks/useAnalytics';
 import './App.css';
+
+function AppContent() {
+  useAnalytics();
+  return (
+    <div className="App min-h-screen bg-white">
+      <Header />
+      <main className="pt-20">
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/services" element={<Services />} />
+          <Route path="/3d-configurator" element={<AIThreeDConfigurator />} />
+          <Route path="/references" element={<References />} />
+          <Route path="/contact" element={<Contact />} />
+          <Route path="/imprint" element={<Imprint />} />
+          <Route path="/portal/login" element={<PortalLogin />} />
+          <Route path="/portal" element={<CustomerPortal />} />
+          <Route path="/admin" element={<AdminPortal />} />
+        </Routes>
+      </main>
+      <Footer />
+      <FloatingChatButton />
+      <CookieConsent />
+      <Toaster position="top-right" richColors />
+    </div>
+  );
+}
 
 function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <div className="App min-h-screen bg-white">
-          <Header />
-          <main className="pt-20">
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/services" element={<Services />} />
-              <Route path="/3d-configurator" element={<AIThreeDConfigurator />} />
-              <Route path="/references" element={<References />} />
-              <Route path="/contact" element={<Contact />} />
-              <Route path="/imprint" element={<Imprint />} />
-              <Route path="/portal/login" element={<PortalLogin />} />
-              <Route path="/portal" element={<CustomerPortal />} />
-              <Route path="/admin" element={<AdminPortal />} />
-            </Routes>
-          </main>
-          <Footer />
-          <FloatingChatButton />
-          <Toaster position="top-right" richColors />
-        </div>
+        <AppContent />
       </AuthProvider>
     </BrowserRouter>
   );

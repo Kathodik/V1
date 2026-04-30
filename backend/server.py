@@ -285,7 +285,7 @@ async def register(user_data: UserCreate):
     # Create user (unverified)
     user_dict = user_data.dict(exclude={"password"})
     user_dict["password_hash"] = get_password_hash(user_data.password)
-    user_dict["is_admin"] = False
+    user_dict["is_admin"] = False  # Admin can only be set via database
     user_dict["is_verified"] = False
     user_dict["verification_token"] = verification_token
     user_obj = User(**user_dict)
@@ -555,6 +555,102 @@ async def get_saved_requests(email: Optional[str] = None, current_user: User = D
         query = {"email": email or current_user.email}
     requests = await db.saved_requests.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
     return requests
+
+# ─── Analytics Tracking ───
+class PageViewEvent(BaseModel):
+    page: str
+    referrer: Optional[str] = None
+    user_agent: Optional[str] = None
+    visitor_id: Optional[str] = None
+
+@api_router.post("/analytics/pageview")
+async def track_pageview(event: PageViewEvent):
+    """Track a page view (called from frontend)"""
+    await db.analytics.insert_one({
+        "type": "pageview",
+        "page": event.page,
+        "referrer": event.referrer,
+        "user_agent": event.user_agent,
+        "visitor_id": event.visitor_id,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    })
+    return {"status": "ok"}
+
+@api_router.get("/analytics/stats")
+async def get_analytics_stats(current_user: User = Depends(get_current_user)):
+    """Get analytics statistics (admin only)"""
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    now = datetime.now(timezone.utc)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+    week_ago = (now - timedelta(days=7)).isoformat()
+    month_ago = (now - timedelta(days=30)).isoformat()
+    
+    # Total page views
+    total_views = await db.analytics.count_documents({"type": "pageview"})
+    today_views = await db.analytics.count_documents({"type": "pageview", "timestamp": {"$gte": today_start}})
+    week_views = await db.analytics.count_documents({"type": "pageview", "timestamp": {"$gte": week_ago}})
+    month_views = await db.analytics.count_documents({"type": "pageview", "timestamp": {"$gte": month_ago}})
+    
+    # Unique visitors (by visitor_id)
+    unique_today = len(await db.analytics.distinct("visitor_id", {"type": "pageview", "timestamp": {"$gte": today_start}}))
+    unique_week = len(await db.analytics.distinct("visitor_id", {"type": "pageview", "timestamp": {"$gte": week_ago}}))
+    unique_month = len(await db.analytics.distinct("visitor_id", {"type": "pageview", "timestamp": {"$gte": month_ago}}))
+    
+    # Top pages (last 30 days)
+    pipeline_pages = [
+        {"$match": {"type": "pageview", "timestamp": {"$gte": month_ago}}},
+        {"$group": {"_id": "$page", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}},
+        {"$limit": 10}
+    ]
+    top_pages = await db.analytics.aggregate(pipeline_pages).to_list(10)
+    
+    # Daily views (last 7 days)
+    daily_views = []
+    for i in range(7):
+        day = now - timedelta(days=i)
+        day_start = day.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+        day_end = (day.replace(hour=23, minute=59, second=59, microsecond=999999)).isoformat()
+        count = await db.analytics.count_documents({
+            "type": "pageview",
+            "timestamp": {"$gte": day_start, "$lte": day_end}
+        })
+        daily_views.append({
+            "date": day.strftime("%d.%m"),
+            "views": count
+        })
+    daily_views.reverse()
+    
+    # Cookie consent stats
+    cookies_accepted = await db.analytics.count_documents({"type": "cookie_consent", "accepted": True})
+    cookies_declined = await db.analytics.count_documents({"type": "cookie_consent", "accepted": False})
+    
+    return {
+        "total_views": total_views,
+        "today_views": today_views,
+        "week_views": week_views,
+        "month_views": month_views,
+        "unique_today": unique_today,
+        "unique_week": unique_week,
+        "unique_month": unique_month,
+        "top_pages": [{"page": p["_id"], "count": p["count"]} for p in top_pages],
+        "daily_views": daily_views,
+        "cookies_accepted": cookies_accepted,
+        "cookies_declined": cookies_declined
+    }
+
+@api_router.post("/analytics/cookie-consent")
+async def track_cookie_consent(accepted: bool = True, visitor_id: str = None):
+    """Track cookie consent decision"""
+    await db.analytics.insert_one({
+        "type": "cookie_consent",
+        "accepted": accepted,
+        "visitor_id": visitor_id,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    })
+    return {"status": "ok"}
 
 # Include the router in the main app
 app.include_router(api_router)
