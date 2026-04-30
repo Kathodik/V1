@@ -239,20 +239,20 @@ const Home = () => {
           <AnimateOnScroll variant="fadeUp" duration="slow">
             <div className="text-center mb-16">
               <p className="text-sm font-semibold tracking-[0.2em] uppercase text-[#2c7a7b] mb-4">
-                12 Metalle
+                13 Metalle
               </p>
               <h2 className="text-4xl sm:text-5xl font-bold text-slate-800 mb-4">
                 Unser Periodensystem
               </h2>
               <p className="text-slate-500 text-lg max-w-xl mx-auto">
-                Von Chrom bis Gold – wählen Sie die perfekte Beschichtung für Ihr Projekt
+                Von Chrom bis Weiß Bronze – wählen Sie die perfekte Beschichtung für Ihr Projekt
               </p>
             </div>
           </AnimateOnScroll>
 
           <AnimateOnScroll variant="fadeUp" duration="slow" delay={150}>
             <div className="flex flex-wrap justify-center gap-3 max-w-3xl mx-auto mb-12">
-              {['Cr', 'Co', 'Ni', 'Cu', 'Zn', 'Ru', 'Rh', 'Pd', 'Ag', 'Sn', 'Pt', 'Au'].map(
+              {['Cr', 'Co', 'Ni', 'Cu', 'Zn', 'Ru', 'Rh', 'Pd', 'Ag', 'Sn', 'Pt', 'Au', 'WB'].map(
                 (symbol, i) => (
                   <div
                     key={symbol}

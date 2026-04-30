@@ -22,7 +22,7 @@ const Footer = () => {
               </div>
             </div>
             <p className="text-sm text-slate-400 leading-relaxed">
-              Professionelle Lohngalvanisierung. Wir schauen, was sich machen lässt – und liefern, was sich sehen lässt.
+              Metallveredelung aus Leidenschaft. Damit Ihr Lieblingsstück Geschichte schreibt – und nicht der Rost.
             </p>
           </div>
 

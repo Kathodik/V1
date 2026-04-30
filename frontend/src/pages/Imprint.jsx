@@ -32,7 +32,12 @@ const Imprint = () => {
     },
     {
       title: 'Umsatzsteuer-ID',
-      content: <p className="text-slate-600">Als Kleinunternehmer im Sinne von § 19 Abs. 1 UStG wird keine Umsatzsteuer berechnet.</p>
+      content: (
+        <div className="space-y-2 text-slate-600">
+          <p>Umsatzsteuer-Identifikationsnummer gemäß § 27a Umsatzsteuergesetz:</p>
+          <p className="text-[#2c7a7b] font-semibold text-lg">DE461441959</p>
+        </div>
+      )
     },
     {
       title: 'Streitschlichtung',

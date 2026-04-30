@@ -198,6 +198,22 @@ const metalTextures = {
     glow: 'rgba(255,200,0,0.4)',
     label: 'Gold-Glanz',
   },
+  WB: {
+    // White Bronze: warm silvery-white alloy, slightly cream tinted
+    bg: `
+      linear-gradient(142deg, #e8e2d8 0%, #d4cec4 16%, #f2ece2 30%, #c8c2b8 46%, #e4ded4 62%, #d0cac0 78%, #ece6dc 100%)
+    `,
+    overlay: `
+      radial-gradient(ellipse 65% 48% at 30% 26%, rgba(255,252,245,0.5) 0%, transparent 55%),
+      linear-gradient(120deg, transparent 40%, rgba(255,252,240,0.12) 50%, transparent 60%),
+      repeating-linear-gradient(165deg, transparent 0px, transparent 2px, rgba(210,200,180,0.06) 2px, rgba(210,200,180,0.06) 3px)
+    `,
+    edge: '#a89e90',
+    textColor: 'rgba(70,60,45,0.7)',
+    textShadow: '1px 1px 0 rgba(255,250,240,0.7)',
+    glow: 'rgba(210,200,180,0.35)',
+    label: 'Warm-Weiß',
+  },
 };
 
 /* ── Period labels ── */
@@ -430,8 +446,8 @@ const Services = () => {
                 <span className="text-xs font-semibold text-slate-400 tracking-widest uppercase ml-1">{periodLabels[6]}</span>
               </div>
               <div className="grid grid-cols-5 gap-4">
-                {/* empty slots to position Pt and Au correctly */}
-                <div className="col-start-3">
+                {/* Position metals in period 6 */}
+                <div className="col-start-2">
                   <ElementCube
                     metal={period6[0]}
                     isSelected={selectedMetal?.symbol === period6[0]?.symbol}
@@ -447,6 +463,16 @@ const Services = () => {
                     index={11}
                   />
                 </div>
+                {period6[2] && (
+                  <div>
+                    <ElementCube
+                      metal={period6[2]}
+                      isSelected={selectedMetal?.symbol === period6[2]?.symbol}
+                      onClick={handleMetalSelect}
+                      index={12}
+                    />
+                  </div>
+                )}
               </div>
             </AnimateOnScroll>
           </div>

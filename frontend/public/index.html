@@ -2,9 +2,11 @@
 <html lang="en">
     <head>
         <meta charset="utf-8" />
+        <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+        <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta name="theme-color" content="#000000" />
-        <meta name="description" content="Kathodik - Professionelle Galvanotechnik & Oberflächenveredelung" />
+        <meta name="theme-color" content="#2c7a7b" />
+        <meta name="description" content="Kathodik Galvanotechnik - Professionelle Metallveredelung und Oberflächenbeschichtung" />
         <!--
         manifest.json provides metadata used when your web app is installed on a
         user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
@@ -57,40 +59,39 @@
       To begin the development, run `npm start` or `yarn start`.
       To create a production bundle, use `npm run build` or `yarn build`.
     -->
-        <a
-            id="emergent-badge"
-            target="_blank"
-            href="https://app.emergent.sh/?utm_source=emergent-badge"
-            style="
-                display: none !important;
-                visibility: hidden !important;
-                width: 0 !important;
-                height: 0 !important;
-                overflow: hidden !important;
-                position: fixed !important;
-                left: -99999px !important;
-            "
-        >
-        </a>
+        <a id="emergent-badge" style="display:none!important"></a>
         <script>
-            // Remove badge on load
             (function() {
-                function removeBadge() {
-                    var badge = document.getElementById('emergent-badge');
-                    if (badge) badge.remove();
-                    // Also remove any dynamically injected badges
+                function removeBadges() {
+                    var b = document.getElementById('emergent-badge');
+                    if (b) b.remove();
                     document.querySelectorAll('a[href*="emergent"]').forEach(function(el) {
-                        if (el.id === 'emergent-badge' || el.textContent.includes('Emergent')) el.remove();
+                        if (!el.closest('#root') && !el.closest('head')) el.remove();
+                    });
+                    document.querySelectorAll('[class*="emergent"]').forEach(function(el) {
+                        if (!el.closest('#root')) el.remove();
                     });
                 }
-                if (document.readyState === 'loading') {
-                    document.addEventListener('DOMContentLoaded', removeBadge);
-                } else {
-                    removeBadge();
-                }
-                // Also run after a delay in case it's injected dynamically
-                setTimeout(removeBadge, 500);
-                setTimeout(removeBadge, 2000);
+                // Observe DOM for dynamically injected badges
+                var observer = new MutationObserver(function(mutations) {
+                    mutations.forEach(function(m) {
+                        m.addedNodes.forEach(function(node) {
+                            if (node.nodeType === 1) {
+                                if (node.id === 'emergent-badge' || 
+                                    (node.tagName === 'A' && node.href && node.href.includes('emergent')) ||
+                                    (node.className && node.className.includes && node.className.includes('emergent'))) {
+                                    node.remove();
+                                }
+                            }
+                        });
+                    });
+                });
+                observer.observe(document.body || document.documentElement, { childList: true, subtree: true });
+                removeBadges();
+                document.addEventListener('DOMContentLoaded', removeBadges);
+                setTimeout(removeBadges, 100);
+                setTimeout(removeBadges, 1000);
+                setTimeout(removeBadges, 3000);
             })();
         </script>
         <script>

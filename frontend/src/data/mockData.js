@@ -165,6 +165,20 @@ export const metals = [
     finishes: [
       { id: 'au-standard', name: 'Standard', description: 'Klassische Vergoldung' }
     ]
+  },
+  { 
+    symbol: 'WB', 
+    name: 'Weiß Bronze', 
+    atomicNumber: 0, 
+    color: '#e8e0d0',
+    group: 12,
+    period: 6,
+    description: 'Legierungsmetall-Elektrolyt, nickelfrei, anlaufbeständig', 
+    applications: 'Schmuck, Brillen, Modeaccessoires, Medizintechnik, hypoallergene Beschichtungen',
+    finishes: [
+      { id: 'wb-standard', name: 'Standard', description: 'Klassische Weiß-Bronze-Beschichtung' },
+      { id: 'wb-bright', name: 'Hochglanz', description: 'Hochglänzende Weiß-Bronze-Oberfläche' }
+    ]
   }
 ];
 
