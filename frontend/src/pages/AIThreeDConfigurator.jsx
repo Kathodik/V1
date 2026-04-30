@@ -168,7 +168,7 @@ const AIThreeDConfigurator = () => {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <AnimateOnScroll variant="fadeUp" duration="slow">
             <div className="text-center">
-              <p className="text-sm font-semibold tracking-[0.2em] uppercase text-[#2c7a7b] mb-4">3D Konfigurator</p>
+              <p className="text-sm font-semibold tracking-[0.2em] uppercase text-[#2c7a7b] mb-4">Luigi</p>
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-slate-800 mb-4" data-testid="configurator-heading">
                 Ihr Produkt. Unsere Technik.
               </h1>
@@ -303,11 +303,13 @@ const AIThreeDConfigurator = () => {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <Label className="text-slate-800 font-semibold mb-2 block">Metall-Beschichtung</Label>
-                        <Select value={selectedMetal} onValueChange={setSelectedMetal}>
+                        <Select value={selectedMetal || undefined} onValueChange={(val) => { setSelectedMetal(val); setSelectedFinish(''); }}>
                           <SelectTrigger className="bg-white border-slate-200" data-testid="metal-select">
                             <SelectValue placeholder="Metall wählen" />
                           </SelectTrigger>
                           <SelectContent>
+                            <SelectItem value="Keine Beschichtung">Keine Beschichtung</SelectItem>
+                            <SelectItem value="Firmament">Firmament</SelectItem>
                             {metals.map(m => (
                               <SelectItem key={m.symbol} value={m.name}>{m.name} ({m.symbol})</SelectItem>
                             ))}
@@ -316,7 +318,7 @@ const AIThreeDConfigurator = () => {
                       </div>
                       <div>
                         <Label className="text-slate-800 font-semibold mb-2 block">Ausführung</Label>
-                        <Select value={selectedFinish} onValueChange={setSelectedFinish} disabled={!currentMetal}>
+                        <Select value={selectedFinish || undefined} onValueChange={setSelectedFinish} disabled={!currentMetal || selectedMetal === 'Keine Beschichtung' || selectedMetal === 'Firmament'}>
                           <SelectTrigger className="bg-white border-slate-200" data-testid="finish-select">
                             <SelectValue placeholder="Ausführung wählen" />
                           </SelectTrigger>
