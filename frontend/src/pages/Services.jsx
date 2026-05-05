@@ -525,6 +525,69 @@ const Services = () => {
         </div>
       </section>
 
+      {/* Mobile Dienstleistung Section */}
+      <section className="pb-20">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="max-w-6xl mx-auto">
+            <AnimateOnScroll variant="fadeUp" duration="slow">
+              <Card className="border-2 border-[#2c7a7b]/20 bg-gradient-to-br from-[#2c7a7b]/[0.03] to-white shadow-lg overflow-hidden">
+                <CardContent className="p-0">
+                  <div className="grid grid-cols-1 lg:grid-cols-2">
+                    <div className="p-8 lg:p-10">
+                      <div className="inline-flex items-center px-3 py-1 rounded-full bg-[#2c7a7b]/10 text-[#2c7a7b] text-xs font-semibold tracking-wider uppercase mb-4">
+                        Neu: Vor-Ort-Service
+                      </div>
+                      <h3 className="text-2xl font-bold text-slate-800 mb-4">
+                        Mobile Dienstleistung
+                      </h3>
+                      <p className="text-slate-600 mb-6 leading-relaxed">
+                        Auftragsabwicklung direkt bei Ihnen vor Ort. Ideal für nicht demontierbare Teile, 
+                        ohne Ausfallzeiten durch Einsendung.
+                      </p>
+                      <div className="space-y-3 mb-6">
+                        {[
+                          'Oberflächenreparatur an Anlagen & Maschinen',
+                          'Beschichtungsarbeiten an Kaminen & Einbauten',
+                          'Keine Demontage nötig – kein Produktionsstillstand',
+                          'Flexible Terminplanung nach Ihren Bedürfnissen'
+                        ].map((item, i) => (
+                          <div key={i} className="flex items-start space-x-3">
+                            <div className="w-5 h-5 rounded-full bg-[#2c7a7b]/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                              <svg className="w-3 h-3 text-[#2c7a7b]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                              </svg>
+                            </div>
+                            <span className="text-sm text-slate-700">{item}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <Button
+                        onClick={() => window.location.href = '/contact'}
+                        className="bg-[#2c7a7b] hover:bg-[#285e61] text-white rounded-full px-6"
+                        data-testid="mobile-service-cta"
+                      >
+                        Vor-Ort-Termin anfragen
+                      </Button>
+                    </div>
+                    <div className="hidden lg:flex items-center justify-center p-10 bg-gradient-to-br from-slate-50 to-slate-100">
+                      <div className="text-center">
+                        <div className="w-32 h-32 mx-auto rounded-2xl bg-[#2c7a7b]/10 flex items-center justify-center mb-4">
+                          <svg className="w-16 h-16 text-[#2c7a7b]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" />
+                          </svg>
+                        </div>
+                        <p className="text-sm font-semibold text-slate-500">Wir kommen zu Ihnen</p>
+                        <p className="text-xs text-slate-400 mt-1">Bundesweit verfügbar</p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </AnimateOnScroll>
+          </div>
+        </div>
+      </section>
+
       {/* Selected Metal Details & Form */}
       {selectedMetal && (
         <section className="pb-20 pt-8" ref={detailRef}>

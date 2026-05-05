@@ -5,7 +5,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { Alert, AlertDescription } from '../components/ui/alert';
-import { Upload, Sparkles, Users, FileUp, Loader2, Image, Send, ArrowLeft, ArrowRight, CheckCircle2, Download } from 'lucide-react';
+import { Upload, Sparkles, Users, FileUp, Loader2, Image, Send, ArrowLeft, ArrowRight, CheckCircle2, Download, Truck } from 'lucide-react';
 import { AnimateOnScroll } from '../components/AnimateOnScroll';
 import { useParallax } from '../hooks/useScrollAnimation';
 import { metals } from '../data/mockData';
@@ -39,6 +39,14 @@ const pathOptions = [
     desc: 'Beschreiben Sie Ihr Produkt und Luigi erstellt ein fotorealistisches Konzeptbild',
     color: 'bg-teal-50 border-teal-200 hover:border-teal-400',
     iconColor: 'text-teal-600 bg-teal-100'
+  },
+  {
+    id: 'mobile_service',
+    icon: Truck,
+    title: 'Mobile Dienstleistung',
+    desc: 'Vor-Ort-Service für nicht demontierbare Teile – ohne Ausfallzeiten',
+    color: 'bg-amber-50 border-amber-200 hover:border-amber-400',
+    iconColor: 'text-amber-600 bg-amber-100'
   }
 ];
 
@@ -252,7 +260,7 @@ const AIThreeDConfigurator = () => {
                   <CardContent className="p-8 space-y-6">
                     <h2 className="text-2xl font-bold text-slate-800">
                       {selectedPath === 'upload' ? 'Datei hochladen' :
-                       selectedPath === 'partner_model' ? 'Produkt beschreiben' :
+                       selectedPath === 'mobile_service' ? 'Vor-Ort-Einsatz beschreiben' :
                        'Produkt beschreiben'}
                     </h2>
 
@@ -291,6 +299,8 @@ const AIThreeDConfigurator = () => {
                         onChange={(e) => setDescription(e.target.value)}
                         placeholder={selectedPath === 'upload' 
                           ? 'Besondere Anforderungen, gewünschte Beschichtung, etc.'
+                          : selectedPath === 'mobile_service'
+                          ? 'Beschreiben Sie den Einsatzort und die Arbeit: z.B. Oberflächenreparatur an einer Anlage, Kamin-Beschichtung, Größe der Fläche, Zugänglichkeit...'
                           : 'Beschreiben Sie Ihr Produkt so detailliert wie möglich: Form, Größe, Material, Verwendungszweck...'
                         }
                         className="bg-white border-slate-200 min-h-32"
@@ -495,7 +505,7 @@ const AIThreeDConfigurator = () => {
                         <div className="bg-slate-50 rounded-2xl p-6 space-y-3">
                           <div className="flex justify-between">
                             <span className="text-slate-500">Auftragstyp</span>
-                            <span className="font-semibold text-slate-800">{selectedPath === 'upload' ? 'Eigene Datei' : 'Partner-Modellierung'}</span>
+                            <span className="font-semibold text-slate-800">{selectedPath === 'upload' ? 'Eigene Datei' : selectedPath === 'mobile_service' ? 'Mobile Dienstleistung' : 'Partner-Modellierung'}</span>
                           </div>
                           {uploadedFileName && (
                             <div className="flex justify-between">

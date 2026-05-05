@@ -719,7 +719,8 @@ async def create_configurator_order(request: ConfiguratorOrderRequest):
     type_labels = {
         "upload": "Eigene Datei hochgeladen",
         "partner_model": "Modellierung durch Partner",
-        "ai_generate": "KI-generiertes Konzept"
+        "ai_generate": "KI-generiertes Konzept",
+        "mobile_service": "Mobile Dienstleistung (Vor-Ort)"
     }
     type_label = type_labels.get(request.order_type, request.order_type)
     
