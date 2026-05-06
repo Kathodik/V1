@@ -5,7 +5,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { Alert, AlertDescription } from '../components/ui/alert';
-import { Upload, Sparkles, Users, FileUp, Loader2, Image, Send, ArrowLeft, ArrowRight, CheckCircle2, Download, Truck } from 'lucide-react';
+import { Upload, Sparkles, Users, FileUp, Loader2, Image, Send, ArrowLeft, ArrowRight, CheckCircle2, Download } from 'lucide-react';
 import { AnimateOnScroll } from '../components/AnimateOnScroll';
 import { useParallax } from '../hooks/useScrollAnimation';
 import { metals } from '../data/mockData';
@@ -39,14 +39,6 @@ const pathOptions = [
     desc: 'Beschreiben Sie Ihr Produkt und Luigi erstellt ein fotorealistisches Konzeptbild',
     color: 'bg-teal-50 border-teal-200 hover:border-teal-400',
     iconColor: 'text-teal-600 bg-teal-100'
-  },
-  {
-    id: 'mobile_service',
-    icon: Truck,
-    title: 'Mobile Dienstleistung',
-    desc: 'Vor-Ort-Service für nicht demontierbare Teile – ohne Ausfallzeiten',
-    color: 'bg-amber-50 border-amber-200 hover:border-amber-400',
-    iconColor: 'text-amber-600 bg-amber-100'
   }
 ];
 
