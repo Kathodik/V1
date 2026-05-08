@@ -342,6 +342,11 @@ const Services = () => {
   const [pauseMessage, setPauseMessage] = useState('');
   const [showSaveForm, setShowSaveForm] = useState(false);
   const [saveFormData, setSaveFormData] = useState({ name: '', email: '', phone: '', notify: true });
+  const [showMobileForm, setShowMobileForm] = useState(false);
+  const [mobileStep, setMobileStep] = useState(1);
+  const [mobileDescription, setMobileDescription] = useState('');
+  const [mobileImage, setMobileImage] = useState(null);
+  const [mobileContact, setMobileContact] = useState({ name: '', email: '', phone: '' });
   const scrollY = useParallax();
   const detailRef = useRef(null);
 
@@ -561,13 +566,124 @@ const Services = () => {
                           </div>
                         ))}
                       </div>
-                      <Button
-                        onClick={() => window.location.href = '/contact'}
-                        className="bg-[#2c7a7b] hover:bg-[#285e61] text-white rounded-full px-6"
-                        data-testid="mobile-service-cta"
-                      >
-                        Vor-Ort-Termin anfragen
-                      </Button>
+                      {!showMobileForm ? (
+                        <Button
+                          onClick={() => setShowMobileForm(true)}
+                          className="bg-[#2c7a7b] hover:bg-[#285e61] text-white rounded-full px-6"
+                          data-testid="mobile-service-cta"
+                        >
+                          Vor-Ort-Termin anfragen
+                        </Button>
+                      ) : (
+                        <div className="mt-2 p-1">
+                          <div className="flex items-center space-x-2 mb-4">
+                            <div className="w-6 h-6 rounded-full bg-[#2c7a7b] text-white flex items-center justify-center text-xs font-bold">
+                              {mobileStep}
+                            </div>
+                            <span className="text-sm font-semibold text-slate-600">
+                              {mobileStep === 1 ? 'Einsatz beschreiben' : mobileStep === 2 ? 'Kontaktdaten' : 'Fertig'}
+                            </span>
+                          </div>
+
+                          {mobileStep === 1 && (
+                            <div className="space-y-4">
+                              <div>
+                                <Label className="text-slate-800 font-semibold mb-2 block text-sm">Was soll vor Ort erledigt werden? *</Label>
+                                <Textarea
+                                  value={mobileDescription}
+                                  onChange={(e) => setMobileDescription(e.target.value)}
+                                  placeholder="z.B. Oberflächenreparatur an einer Industrieanlage, Kamin-Beschichtung, Größe der Fläche, Zugänglichkeit..."
+                                  className="bg-white border-slate-200 min-h-24 text-sm"
+                                  data-testid="mobile-description"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-slate-800 font-semibold mb-2 block text-sm">Referenzbild (optional)</Label>
+                                <div className="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center hover:border-[#2c7a7b] transition-colors">
+                                  <input type="file" accept="image/*" onChange={(e) => {
+                                    const file = e.target.files[0];
+                                    if (file) {
+                                      const reader = new FileReader();
+                                      reader.onload = (ev) => setMobileImage(ev.target.result);
+                                      reader.readAsDataURL(file);
+                                    }
+                                  }} className="hidden" id="mobile-ref-upload" />
+                                  <label htmlFor="mobile-ref-upload" className="cursor-pointer">
+                                    {mobileImage ? (
+                                      <img src={mobileImage} alt="Referenz" className="max-h-24 mx-auto rounded-lg" />
+                                    ) : (
+                                      <p className="text-slate-500 text-xs">Bild hochladen</p>
+                                    )}
+                                  </label>
+                                </div>
+                              </div>
+                              <Button
+                                onClick={() => { if (mobileDescription.trim()) setMobileStep(2); else toast.error('Bitte beschreiben Sie den Einsatz'); }}
+                                className="w-full bg-[#2c7a7b] hover:bg-[#285e61] text-white rounded-full"
+                                data-testid="mobile-next"
+                              >
+                                Weiter
+                              </Button>
+                            </div>
+                          )}
+
+                          {mobileStep === 2 && (
+                            <div className="space-y-4">
+                              <div>
+                                <Label className="text-slate-800 font-semibold mb-2 block text-sm">Name *</Label>
+                                <Input value={mobileContact.name} onChange={(e) => setMobileContact({...mobileContact, name: e.target.value})} placeholder="Ihr Name" className="bg-white border-slate-200 text-sm" data-testid="mobile-name" />
+                              </div>
+                              <div>
+                                <Label className="text-slate-800 font-semibold mb-2 block text-sm">E-Mail *</Label>
+                                <Input type="email" value={mobileContact.email} onChange={(e) => setMobileContact({...mobileContact, email: e.target.value})} placeholder="ihre@email.de" className="bg-white border-slate-200 text-sm" data-testid="mobile-email" />
+                              </div>
+                              <div>
+                                <Label className="text-slate-800 font-semibold mb-2 block text-sm">Telefon</Label>
+                                <Input type="tel" value={mobileContact.phone} onChange={(e) => setMobileContact({...mobileContact, phone: e.target.value})} placeholder="Optional" className="bg-white border-slate-200 text-sm" data-testid="mobile-phone" />
+                              </div>
+                              <div className="flex gap-2">
+                                <Button variant="outline" onClick={() => setMobileStep(1)} className="flex-1 rounded-full text-sm">Zurück</Button>
+                                <Button
+                                  onClick={async () => {
+                                    if (!mobileContact.name || !mobileContact.email) { toast.error('Bitte Name und E-Mail angeben'); return; }
+                                    try {
+                                      await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/configurator/order`, {
+                                        order_type: 'mobile_service',
+                                        name: mobileContact.name,
+                                        email: mobileContact.email,
+                                        phone: mobileContact.phone,
+                                        description: mobileDescription,
+                                        reference_image: mobileImage || null
+                                      });
+                                      setMobileStep(3);
+                                      toast.success('Anfrage erfolgreich gesendet!');
+                                    } catch { toast.error('Fehler beim Senden'); }
+                                  }}
+                                  className="flex-1 bg-[#2c7a7b] hover:bg-[#285e61] text-white rounded-full text-sm"
+                                  data-testid="mobile-submit"
+                                >
+                                  Anfrage absenden
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+
+                          {mobileStep === 3 && (
+                            <div className="text-center py-4">
+                              <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-3">
+                                <svg className="w-6 h-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                </svg>
+                              </div>
+                              <p className="font-semibold text-slate-800 text-sm">Anfrage gesendet!</p>
+                              <p className="text-xs text-slate-500 mt-1">Wir melden uns zeitnah bei Ihnen.</p>
+                              <Button variant="outline" onClick={() => { setShowMobileForm(false); setMobileStep(1); setMobileDescription(''); setMobileImage(null); setMobileContact({name:'',email:'',phone:''}); }} className="mt-4 rounded-full text-xs">
+                                Neue Anfrage
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                     <div className="hidden lg:flex items-center justify-center p-10 bg-gradient-to-br from-slate-50 to-slate-100">
                       <div className="text-center">
