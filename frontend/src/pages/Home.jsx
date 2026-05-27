@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Layers, Atom, CheckCircle2, Zap, ChevronDown } from 'lucide-react';
+import { Layers, Atom, CheckCircle2, Zap, ChevronDown, Info } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { AnimateOnScroll } from '../components/AnimateOnScroll';
@@ -96,6 +96,36 @@ const Home = () => {
 
         {/* Bottom gradient fade into next section */}
         <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-white to-transparent pointer-events-none" />
+      </section>
+
+      {/* Capacity Notice */}
+      <section className="py-10 bg-white" data-testid="capacity-notice-section">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <AnimateOnScroll variant="fadeUp" duration="normal">
+            <div
+              className="max-w-3xl mx-auto rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 p-6 sm:p-7 shadow-sm flex items-start gap-4"
+              data-testid="capacity-notice"
+            >
+              <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
+                <Info className="h-5 w-5 text-amber-700" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold tracking-[0.18em] uppercase text-amber-700 mb-1.5">
+                  Aktuelle Auftragslage
+                </p>
+                <h3 className="text-lg sm:text-xl font-bold text-slate-800 mb-2 leading-snug">
+                  Hohe Nachfrage – derzeit nur kleine Aufträge möglich
+                </h3>
+                <p className="text-sm text-slate-600 leading-relaxed">
+                  Aufgrund der aktuell hohen Auslastung können wir momentan ausschließlich
+                  <span className="font-semibold text-slate-800"> kleinere Aufträge</span> wie
+                  <span className="font-semibold text-slate-800"> Schmuck</span>, Kleinteile und
+                  filigrane Werkstücke annehmen. Vielen Dank für Ihr Verständnis.
+                </p>
+              </div>
+            </div>
+          </AnimateOnScroll>
+        </div>
       </section>
 
       {/* Services Section */}
