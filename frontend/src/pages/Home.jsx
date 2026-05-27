@@ -175,7 +175,7 @@ const Home = () => {
       {/* Full-width image/brand section with parallax */}
       <section className="relative h-[60vh] min-h-[400px] overflow-hidden grain-overlay">
         <div
-          className="absolute inset-0 bg-[#2c7a7b]"
+          className="absolute -inset-y-32 inset-x-0 bg-[#2c7a7b]"
           style={{ transform: `translateY(${(scrollY - 800) * 0.08}px)` }}
         >
           <div className="absolute inset-0 bg-gradient-to-br from-[#2c7a7b] via-[#285e61] to-[#1a4e50]" />
@@ -187,16 +187,16 @@ const Home = () => {
         </div>
         <div className="relative z-10 h-full flex items-center justify-center">
           <AnimateOnScroll variant="scaleUp" duration="slow">
-            <div className="text-center px-4">
-              <p className="text-white/60 text-sm font-semibold tracking-[0.3em] uppercase mb-6">
+            <div className="text-center px-6 max-w-2xl mx-auto">
+              <p className="text-white/60 text-xs sm:text-sm font-semibold tracking-[0.3em] uppercase mb-5">
                 Seit Generationen
               </p>
-              <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white leading-tight mb-6">
+              <h2 className="text-3xl sm:text-5xl lg:text-6xl font-bold text-white leading-[1.1] mb-6">
                 Präzision trifft
                 <br />
                 Leidenschaft
               </h2>
-              <p className="text-white/70 text-lg max-w-xl mx-auto">
+              <p className="text-white/70 text-base sm:text-lg leading-relaxed">
                 Professionelle Galvanotechnik für anspruchsvolle Projekte – von der Einzelanfertigung bis zur Serie.
               </p>
             </div>
@@ -205,21 +205,21 @@ const Home = () => {
       </section>
 
       {/* Features / Why Kathodik section */}
-      <section className="py-28 bg-white relative">
+      <section className="py-20 sm:py-28 bg-white relative">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center max-w-6xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center max-w-6xl mx-auto">
             <AnimateOnScroll variant="fadeRight" duration="slow">
-              <div>
+              <div className="text-center lg:text-left">
                 <p className="text-sm font-semibold tracking-[0.2em] uppercase text-[#2c7a7b] mb-4">
                   Ihre Vorteile
                 </p>
-                <h2 className="text-4xl sm:text-5xl font-bold text-slate-800 mb-8 leading-tight">
+                <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-slate-800 mb-6 lg:mb-8 leading-tight">
                   Warum Kathodik?
                 </h2>
-                <p className="text-lg text-slate-500 mb-10 leading-relaxed">
+                <p className="text-base sm:text-lg text-slate-500 mb-8 lg:mb-10 leading-relaxed">
                   Als mobiler Galvanikbetrieb bieten wir Ihnen flexible und professionelle Lösungen für Ihre Beschichtungsanforderungen.
                 </p>
-                <ul className="space-y-5">
+                <ul className="space-y-4 sm:space-y-5 text-left max-w-md mx-auto lg:mx-0">
                   {[
                     'Breite Auswahl an 12 Galvanisierungsmetallen',
                     'Präzise Beschichtung bis max. 40 x 60 x 160 cm',
@@ -236,7 +236,7 @@ const Home = () => {
                         <div className="w-6 h-6 rounded-full bg-[#2c7a7b]/10 flex items-center justify-center flex-shrink-0 mt-0.5">
                           <CheckCircle2 className="h-4 w-4 text-[#2c7a7b]" />
                         </div>
-                        <span className="text-slate-600 text-base">{feature}</span>
+                        <span className="text-slate-600 text-sm sm:text-base">{feature}</span>
                       </li>
                     </AnimateOnScroll>
                   ))}
@@ -245,18 +245,32 @@ const Home = () => {
             </AnimateOnScroll>
 
             <AnimateOnScroll variant="fadeLeft" duration="slow" delay={200}>
-              <div className="relative">
-                <div className="aspect-square rounded-3xl overflow-hidden bg-gradient-to-br from-[#2c7a7b]/5 to-[#2c7a7b]/10 border border-[#2c7a7b]/10 flex items-center justify-center">
+              <div className="relative max-w-sm sm:max-w-md mx-auto w-full">
+                {/* Soft glow behind card */}
+                <div className="absolute -inset-6 bg-gradient-to-br from-[#2c7a7b]/20 via-[#2c7a7b]/5 to-transparent rounded-[2.5rem] blur-2xl opacity-60" />
+
+                {/* Main logo card */}
+                <div className="relative aspect-square rounded-3xl overflow-hidden bg-gradient-to-br from-white via-slate-50 to-[#2c7a7b]/5 border border-[#2c7a7b]/15 shadow-2xl shadow-[#2c7a7b]/10 flex items-center justify-center p-10 sm:p-14">
+                  {/* Subtle pattern */}
+                  <div className="absolute inset-0 opacity-[0.04]" style={{
+                    backgroundImage: 'radial-gradient(circle at 1px 1px, #2c7a7b 1px, transparent 0)',
+                    backgroundSize: '24px 24px',
+                  }} />
+                  {/* Top-right accent ring */}
+                  <div className="absolute top-6 right-6 w-12 h-12 rounded-full border-2 border-[#2c7a7b]/15" />
+                  <div className="absolute bottom-6 left-6 w-8 h-8 rounded-full bg-[#2c7a7b]/10" />
+
                   <img
                     src="https://customer-assets.emergentagent.com/job_metal-coating/artifacts/4mzqxaj5_A80F545A-F543-476F-BF3A-7169BDADA022.png"
                     alt="Kathodik Logo"
-                    className="w-3/4 h-3/4 object-contain opacity-80"
-                    style={{ transform: `translateY(${(scrollY - 1600) * -0.04}px)` }}
+                    className="relative w-full h-full object-contain drop-shadow-md"
+                    style={{ transform: `translateY(${(scrollY - 1600) * -0.03}px)` }}
                   />
                 </div>
-                {/* Floating accent */}
-                <div className="absolute -bottom-4 -right-4 w-24 h-24 rounded-2xl bg-[#2c7a7b] opacity-10" />
-                <div className="absolute -top-4 -left-4 w-16 h-16 rounded-xl bg-[#2c7a7b] opacity-10" />
+
+                {/* Decorative corner accents */}
+                <div className="hidden sm:block absolute -bottom-3 -right-3 w-20 h-20 rounded-2xl bg-[#2c7a7b]/10 -z-10" />
+                <div className="hidden sm:block absolute -top-3 -left-3 w-14 h-14 rounded-xl bg-[#2c7a7b]/10 -z-10" />
               </div>
             </AnimateOnScroll>
           </div>
