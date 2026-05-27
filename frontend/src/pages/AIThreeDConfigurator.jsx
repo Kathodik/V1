@@ -5,11 +5,13 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { Alert, AlertDescription } from '../components/ui/alert';
+import { Checkbox } from '../components/ui/checkbox';
 import { Upload, Sparkles, Users, FileUp, Loader2, Image, Send, ArrowLeft, ArrowRight, CheckCircle2, Download } from 'lucide-react';
 import { AnimateOnScroll } from '../components/AnimateOnScroll';
 import { useParallax } from '../hooks/useScrollAnimation';
 import { metals } from '../data/mockData';
 import { toast } from 'sonner';
+import { Link } from 'react-router-dom';
 import axios from 'axios';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -60,6 +62,7 @@ const AIThreeDConfigurator = () => {
   const [orderId, setOrderId] = useState('');
   const [contactData, setContactData] = useState({ name: '', email: '', phone: '' });
   const [showMetalPicker, setShowMetalPicker] = useState(false);
+  const [agbAccepted, setAgbAccepted] = useState(false);
 
   const currentMetal = metals.find(m => m.name === selectedMetal);
 
@@ -118,6 +121,10 @@ const AIThreeDConfigurator = () => {
       toast.error('Bitte Name und E-Mail angeben');
       return;
     }
+    if (!agbAccepted) {
+      toast.error('Bitte stimmen Sie den AGB und dem Haftungsausschluss zu');
+      return;
+    }
     setSubmitting(true);
     try {
       const res = await axios.post(`${API}/configurator/order`, {
@@ -157,6 +164,7 @@ const AIThreeDConfigurator = () => {
     setOrderComplete(false);
     setOrderId('');
     setContactData({ name: '', email: '', phone: '' });
+    setAgbAccepted(false);
   };
 
   return (
@@ -590,13 +598,19 @@ const AIThreeDConfigurator = () => {
                         />
                       </div>
                     </div>
+                    <div className="flex items-start space-x-3 p-4 bg-slate-50 rounded-xl border border-slate-200" data-testid="agb-checkbox-area">
+                      <Checkbox id="agb-configurator" checked={agbAccepted} onCheckedChange={setAgbAccepted} className="mt-0.5" data-testid="agb-checkbox" />
+                      <Label htmlFor="agb-configurator" className="text-sm text-slate-700 cursor-pointer leading-relaxed">
+                        Ich habe die <Link to="/agb" target="_blank" className="text-[#2c7a7b] font-semibold underline hover:text-[#285e61]">AGB und den Haftungsausschluss</Link> gelesen und akzeptiere diese. Mir ist insbesondere bekannt, dass keine Haftung für Mängel am Grundmaterial (z.B. Schlackeeinschlüsse) übernommen wird. *
+                      </Label>
+                    </div>
                     <div className="flex gap-3 pt-4">
                       <Button variant="outline" onClick={() => setStep(3)} className="flex-1 py-6 rounded-full">
                         <ArrowLeft className="h-5 w-5 mr-2" /> Zurück
                       </Button>
                       <Button
                         onClick={handleSubmitOrder}
-                        disabled={!contactData.name || !contactData.email || submitting}
+                        disabled={!contactData.name || !contactData.email || !agbAccepted || submitting}
                         className="flex-1 bg-[#2c7a7b] hover:bg-[#285e61] text-white py-6 rounded-full"
                         data-testid="submit-order"
                       >

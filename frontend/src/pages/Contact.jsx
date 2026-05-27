@@ -11,6 +11,7 @@ import { AnimateOnScroll } from '../components/AnimateOnScroll';
 import { useParallax } from '../hooks/useScrollAnimation';
 import { companyInfo } from '../data/mockData';
 import { toast } from 'sonner';
+import { Link } from 'react-router-dom';
 import axios from 'axios';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -22,6 +23,7 @@ const Contact = () => {
   const [acceptingOrders, setAcceptingOrders] = useState(true);
   const [pauseMessage, setPauseMessage] = useState('');
   const [notifyMe, setNotifyMe] = useState(true);
+  const [agbAccepted, setAgbAccepted] = useState(false);
   const scrollY = useParallax();
 
   useEffect(() => {
@@ -35,6 +37,10 @@ const Contact = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!agbAccepted) {
+      toast.error('Bitte stimmen Sie den AGB und dem Haftungsausschluss zu');
+      return;
+    }
     setLoading(true);
     try {
       if (acceptingOrders) {
@@ -54,6 +60,7 @@ const Contact = () => {
         );
       }
       setFormData({ name: '', email: '', phone: '', message: '' });
+      setAgbAccepted(false);
     } catch (error) {
       console.error('Error:', error);
       toast.error(error.response?.data?.detail || 'Fehler beim Senden');
@@ -182,6 +189,13 @@ const Contact = () => {
                           </Label>
                         </div>
                       )}
+
+                      <div className="flex items-start space-x-3 p-4 bg-slate-50 rounded-xl border border-slate-200" data-testid="contact-agb-area">
+                        <Checkbox id="agb-contact" checked={agbAccepted} onCheckedChange={setAgbAccepted} className="mt-0.5" data-testid="contact-agb-checkbox" />
+                        <Label htmlFor="agb-contact" className="text-sm text-slate-700 cursor-pointer leading-relaxed">
+                          Ich habe die <Link to="/agb" target="_blank" className="text-[#2c7a7b] font-semibold underline hover:text-[#285e61]">AGB und den Haftungsausschluss</Link> gelesen und akzeptiere diese. Mir ist insbesondere bekannt, dass keine Haftung für Mängel am Grundmaterial (z.B. Schlackeeinschlüsse) übernommen wird. *
+                        </Label>
+                      </div>
 
                       <Button type="submit" className="w-full bg-[#2c7a7b] hover:bg-[#285e61] text-white py-6 text-lg rounded-full transition-all duration-300 shadow-lg shadow-[#2c7a7b]/20" disabled={loading} data-testid="contact-submit-btn">
                         {loading ? (

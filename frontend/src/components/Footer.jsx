@@ -51,6 +51,7 @@ const Footer = () => {
             <ul className="space-y-3">
               {[
                 { name: 'Kundenportal', href: '/portal/login' },
+                { name: 'AGB & Haftungsausschluss', href: '/agb' },
                 { name: 'Impressum', href: '/imprint' },
               ].map((link) => (
                 <li key={link.name}>
