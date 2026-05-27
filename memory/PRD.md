@@ -39,6 +39,8 @@ Professional website for the electroplating business "Kathodik" with services sh
 - [x] Imprint with USt-ID DE461441959
 - [x] Favicon with K+ logo
 - [x] "Made with Emergent" watermark removed
+- [x] AGB / Haftungsausschluss-Seite (`/agb`) inkl. Klausel zu Grundmaterial-Defekten (Schlackeeinschlüsse) (2026-05)
+- [x] AGB-Link im Footer + Pflicht-Consent-Checkbox in allen Bestell-/Kontaktformularen (Contact, 3D-Konfigurator, Services-Order, Mobile-Service, Save-Request) (2026-05)
 
 ## Admin Access
 - URL: /admin (via Portal Login)
