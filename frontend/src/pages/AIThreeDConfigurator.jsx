@@ -601,7 +601,7 @@ const AIThreeDConfigurator = () => {
                     <div className="flex items-start space-x-3 p-4 bg-slate-50 rounded-xl border border-slate-200" data-testid="agb-checkbox-area">
                       <Checkbox id="agb-configurator" checked={agbAccepted} onCheckedChange={setAgbAccepted} className="mt-0.5" data-testid="agb-checkbox" />
                       <Label htmlFor="agb-configurator" className="text-sm text-slate-700 cursor-pointer leading-relaxed">
-                        Ich habe die <Link to="/agb" target="_blank" className="text-[#2c7a7b] font-semibold underline hover:text-[#285e61]">AGB und den Haftungsausschluss</Link> gelesen und akzeptiere diese. Mir ist insbesondere bekannt, dass keine Haftung für Mängel am Grundmaterial (z.B. Schlackeeinschlüsse) übernommen wird. *
+                        Ich akzeptiere die <Link to="/agb" target="_blank" className="text-[#2c7a7b] font-semibold underline hover:text-[#285e61]">AGB und den Haftungsausschluss</Link>. *
                       </Label>
                     </div>
                     <div className="flex gap-3 pt-4">

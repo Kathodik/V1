@@ -658,7 +658,7 @@ const Services = () => {
                               <div className="flex items-start space-x-3 p-3 bg-slate-50 rounded-lg border border-slate-200" data-testid="mobile-agb-area">
                                 <Checkbox id="agb-mobile" checked={mobileAgbAccepted} onCheckedChange={setMobileAgbAccepted} className="mt-0.5" data-testid="mobile-agb-checkbox" />
                                 <Label htmlFor="agb-mobile" className="text-xs text-slate-700 cursor-pointer leading-relaxed">
-                                  Ich akzeptiere die <Link to="/agb" target="_blank" className="text-[#2c7a7b] font-semibold underline">AGB & den Haftungsausschluss</Link> (keine Haftung für Grundmaterialfehler wie Schlackeeinschlüsse). *
+                                  Ich akzeptiere die <Link to="/agb" target="_blank" className="text-[#2c7a7b] font-semibold underline">AGB und den Haftungsausschluss</Link>. *
                                 </Label>
                               </div>
                               <div className="flex gap-2">
@@ -850,7 +850,7 @@ const Services = () => {
                         <div className="flex items-start space-x-3 p-4 bg-slate-50 rounded-xl border border-slate-200" data-testid="save-agb-area">
                           <Checkbox id="agb-save" checked={saveAgbAccepted} onCheckedChange={setSaveAgbAccepted} className="mt-0.5" data-testid="save-agb-checkbox" />
                           <Label htmlFor="agb-save" className="text-sm text-slate-700 cursor-pointer leading-relaxed">
-                            Ich akzeptiere die <Link to="/agb" target="_blank" className="text-[#2c7a7b] font-semibold underline">AGB & den Haftungsausschluss</Link> (keine Haftung für Grundmaterialfehler wie Schlackeeinschlüsse). *
+                            Ich akzeptiere die <Link to="/agb" target="_blank" className="text-[#2c7a7b] font-semibold underline">AGB und den Haftungsausschluss</Link>. *
                           </Label>
                         </div>
                         <Button type="submit" className="w-full bg-[#2c7a7b] hover:bg-[#285e61] text-white py-6 text-lg rounded-full" data-testid="save-request-btn">
@@ -927,7 +927,7 @@ const Services = () => {
                       <div className="flex items-start space-x-3 p-4 bg-slate-50 rounded-xl border border-slate-200" data-testid="order-agb-area">
                         <Checkbox id="agb-order" checked={orderAgbAccepted} onCheckedChange={setOrderAgbAccepted} className="mt-0.5" data-testid="order-agb-checkbox" />
                         <Label htmlFor="agb-order" className="text-sm text-slate-700 cursor-pointer leading-relaxed">
-                          Ich habe die <Link to="/agb" target="_blank" className="text-[#2c7a7b] font-semibold underline hover:text-[#285e61]">AGB und den Haftungsausschluss</Link> gelesen und akzeptiere diese. Mir ist insbesondere bekannt, dass keine Haftung für Mängel am Grundmaterial (z.B. Schlackeeinschlüsse in Eisen) übernommen wird. *
+                          Ich akzeptiere die <Link to="/agb" target="_blank" className="text-[#2c7a7b] font-semibold underline hover:text-[#285e61]">AGB und den Haftungsausschluss</Link>. *
                         </Label>
                       </div>
 
