@@ -16,6 +16,30 @@ code {
         monospace;
 }
 
+/* Coating preview light sweep across the finished metal */
+.coating-sweep {
+    background: linear-gradient(
+        110deg,
+        transparent 0%,
+        transparent 35%,
+        rgba(255, 255, 255, 0.55) 50%,
+        transparent 65%,
+        transparent 100%
+    );
+    background-size: 250% 100%;
+    background-repeat: no-repeat;
+    animation: coating-sweep-anim 2.2s ease-in-out 0.3s 1 forwards;
+}
+@keyframes coating-sweep-anim {
+    0% {
+        background-position: 150% 0;
+    }
+    100% {
+        background-position: -50% 0;
+    }
+}
+
+
 
 @layer base {
   :root {

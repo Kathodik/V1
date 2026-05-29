@@ -866,6 +866,34 @@ async def track_cookie_consent(accepted: bool = True, visitor_id: str = None):
     })
     return {"status": "ok"}
 
+# ---------- Background removal (rembg) ----------
+_rembg_session = None
+
+def _get_rembg_session():
+    global _rembg_session
+    if _rembg_session is None:
+        from rembg import new_session
+        _rembg_session = new_session("u2netp")  # small/fast model
+    return _rembg_session
+
+@api_router.post("/coating/remove-background")
+async def remove_bg(file: UploadFile = File(...)):
+    """Remove image background using rembg. Returns base64-encoded transparent PNG."""
+    try:
+        if not file.content_type or not file.content_type.startswith("image/"):
+            raise HTTPException(status_code=400, detail="Bitte ein Bild hochladen")
+        content = await file.read()
+        if len(content) > 10 * 1024 * 1024:
+            raise HTTPException(status_code=400, detail="Bild zu groß (max. 10 MB)")
+        from rembg import remove
+        out = await asyncio.to_thread(remove, content, session=_get_rembg_session())
+        return {"image_base64": base64.b64encode(out).decode("utf-8")}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.exception("rembg failed")
+        raise HTTPException(status_code=500, detail=f"Freistellen fehlgeschlagen: {str(e)}")
+
 # Include the router in the main app
 app.include_router(api_router)
 

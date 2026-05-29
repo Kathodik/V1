@@ -13,6 +13,7 @@ import { useParallax } from '../hooks/useScrollAnimation';
 import { metals, companyInfo } from '../data/mockData';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
+import CoatingPreview from '../components/CoatingPreview';
 import axios from 'axios';
 
 /* ── Per-element realistic texture config ── */
@@ -544,6 +545,43 @@ const Services = () => {
         </div>
       </section>
 
+      {/* Schichtaufbau Info Banner */}
+      <section className="pb-8 -mt-4">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <AnimateOnScroll variant="fadeUp">
+            <div className="max-w-4xl mx-auto rounded-2xl border border-[#2c7a7b]/20 bg-gradient-to-r from-[#2c7a7b]/[0.04] to-white p-6 sm:p-7 shadow-sm" data-testid="schichtaufbau-info">
+              <div className="flex items-start gap-4">
+                <div className="w-11 h-11 rounded-xl bg-[#2c7a7b]/10 flex items-center justify-center flex-shrink-0">
+                  <svg className="w-5 h-5 text-[#2c7a7b]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs font-semibold tracking-[0.18em] uppercase text-[#2c7a7b] mb-1.5">
+                    Professioneller Schichtaufbau – inklusive
+                  </p>
+                  <h3 className="text-lg sm:text-xl font-bold text-slate-800 mb-2 leading-snug">
+                    Damit deine Wunschbeschichtung ewig hält und perfekt glänzt
+                  </h3>
+                  <p className="text-sm text-slate-600 leading-relaxed">
+                    Nach Erhalt deines Bauteils ermitteln wir das Grundmaterial. Je nach Bedarf tragen wir
+                    vorab die optimalen <span className="font-semibold text-slate-800">Haft- und Glanzschichten</span> (z. B. Kupfer/Nickel) auf –
+                    für dich <span className="font-semibold text-[#2c7a7b]">komplett ohne Aufpreis</span>.
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2 mt-4">
+                    <span className="text-[11px] font-bold tracking-wider uppercase px-2.5 py-1 rounded-full bg-[#B87333]/15 text-[#8a4f1c]">1. Kupfer</span>
+                    <span className="text-slate-300">→</span>
+                    <span className="text-[11px] font-bold tracking-wider uppercase px-2.5 py-1 rounded-full bg-slate-200 text-slate-700">2. Nickel</span>
+                    <span className="text-slate-300">→</span>
+                    <span className="text-[11px] font-bold tracking-wider uppercase px-2.5 py-1 rounded-full bg-[#2c7a7b]/15 text-[#1f5658]">3. Endmetall</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </AnimateOnScroll>
+        </div>
+      </section>
+
       {/* Mobile Dienstleistung Section */}
       <section className="pb-20">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -798,6 +836,14 @@ const Services = () => {
                           <p className="text-sm text-slate-500">{selectedMetal.applications}</p>
                         </div>
                       </div>
+                    </div>
+
+                    {/* Coating Preview */}
+                    <div className="mt-6 pt-6 border-t border-slate-100">
+                      <p className="text-xs font-semibold tracking-[0.15em] uppercase text-[#2c7a7b] mb-1">Live-Vorschau</p>
+                      <h4 className="text-base font-bold text-slate-800 mb-1">Bauteil-Simulation</h4>
+                      <p className="text-xs text-slate-500 mb-4">Lade ein Foto hoch und sieh den Schichtaufbau in Aktion.</p>
+                      <CoatingPreview selectedMetal={selectedMetal} />
                     </div>
                   </CardContent>
                 </Card>
