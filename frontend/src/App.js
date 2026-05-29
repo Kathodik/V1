@@ -17,6 +17,7 @@ import CustomerPortal from './pages/CustomerPortal';
 import AdminPortal from './pages/AdminPortal';
 import AGB from './pages/AGB';
 import Datenschutz from './pages/Datenschutz';
+import Widerruf from './pages/Widerruf';
 import useAnalytics from './hooks/useAnalytics';
 import './App.css';
 
@@ -38,6 +39,7 @@ function AppContent() {
           <Route path="/admin" element={<AdminPortal />} />
           <Route path="/agb" element={<AGB />} />
           <Route path="/datenschutz" element={<Datenschutz />} />
+          <Route path="/widerruf" element={<Widerruf />} />
         </Routes>
       </main>
       <Footer />
