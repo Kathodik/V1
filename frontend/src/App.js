@@ -6,6 +6,7 @@ import Header from './components/Header';
 import Footer from './components/Footer';
 import FloatingChatButton from './components/FloatingChatButton';
 import CookieConsent from './components/CookieConsent';
+import ScrollToTop from './components/ScrollToTop';
 import Home from './pages/Home';
 import Services from './pages/Services';
 import AIThreeDConfigurator from './pages/AIThreeDConfigurator';
@@ -25,6 +26,7 @@ function AppContent() {
   useAnalytics();
   return (
     <div className="App min-h-screen bg-white">
+      <ScrollToTop />
       <Header />
       <main className="pt-20">
         <Routes>
