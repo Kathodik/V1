@@ -352,6 +352,8 @@ const Services = () => {
   const [mobileAgbAccepted, setMobileAgbAccepted] = useState(false);
   const [orderAgbAccepted, setOrderAgbAccepted] = useState(false);
   const [saveAgbAccepted, setSaveAgbAccepted] = useState(false);
+  const [baseMaterial, setBaseMaterial] = useState('');
+  const [condition, setCondition] = useState('');
   const scrollY = useParallax();
   const detailRef = useRef(null);
 
@@ -370,6 +372,8 @@ const Services = () => {
     setQuantity('');
     setDescription('');
     setImages([]);
+    setBaseMaterial('');
+    setCondition('');
     setTimeout(() => detailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
   };
 
@@ -387,6 +391,10 @@ const Services = () => {
       toast.error('Bitte füllen Sie alle Pflichtfelder aus');
       return;
     }
+    if (!condition) {
+      toast.error('Bitte wählen Sie den Zustand des Bauteils');
+      return;
+    }
     if (!acceptingOrders) {
       setShowSaveForm(true);
       return;
@@ -399,6 +407,8 @@ const Services = () => {
     toast.success(`Anfrage erfolgreich! ${selectedMetal.name} - ${finish.name}`);
     setSelectedMetal(null);
     setOrderAgbAccepted(false);
+    setBaseMaterial('');
+    setCondition('');
   };
 
   const handleSaveRequest = async (e) => {
@@ -937,6 +947,50 @@ const Services = () => {
                       <div>
                         <Label htmlFor="quantity" className="text-slate-800 mb-2 block font-semibold">Stückzahl *</Label>
                         <Input id="quantity" type="number" min="1" value={quantity} onChange={(e) => setQuantity(e.target.value)} placeholder="Anzahl der Teile" className="bg-white border-slate-200" required data-testid="quantity-input" />
+                      </div>
+
+                      <div>
+                        <Label htmlFor="base-material" className="text-slate-800 mb-2 block font-semibold">
+                          Grundmaterial <span className="text-slate-400 font-normal text-sm">(falls bekannt)</span>
+                        </Label>
+                        <Input
+                          id="base-material"
+                          value={baseMaterial}
+                          onChange={(e) => setBaseMaterial(e.target.value)}
+                          placeholder="z.B. Messing, Edelstahl 1.4301, Aluminium, Zink-Druckguss..."
+                          className="bg-white border-slate-200"
+                          data-testid="base-material-input"
+                        />
+                      </div>
+
+                      <div>
+                        <Label className="text-slate-800 mb-3 block font-semibold">Zustand des Bauteils *</Label>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5" data-testid="condition-options">
+                          {[
+                            { id: 'neu', dot: 'bg-green-500', ring: 'ring-green-400', selectedBg: 'border-green-400 bg-green-50', label: 'Neu / Neuwertig', desc: 'Direkt bereit fürs Bad' },
+                            { id: 'leicht', dot: 'bg-amber-500', ring: 'ring-amber-400', selectedBg: 'border-amber-400 bg-amber-50', label: 'Leicht oxidiert / Kratzer', desc: 'Polieren & entfetten nötig' },
+                            { id: 'stark', dot: 'bg-red-500', ring: 'ring-red-400', selectedBg: 'border-red-400 bg-red-50', label: 'Starker Rost / Tiefenkratzer', desc: 'Entrostung & Schleifen' },
+                          ].map((opt, idx) => (
+                            <button
+                              type="button"
+                              key={opt.id}
+                              onClick={() => setCondition(opt.id)}
+                              className={`text-left p-3 rounded-xl border-2 transition-all duration-200 ${
+                                condition === opt.id
+                                  ? `${opt.selectedBg} shadow-sm`
+                                  : 'border-slate-200 bg-white hover:border-slate-300'
+                              }`}
+                              data-testid={`condition-${opt.id}`}
+                            >
+                              <div className="flex items-center gap-2 mb-1.5">
+                                <span className={`inline-block w-3 h-3 rounded-full ${opt.dot} ${condition === opt.id ? `ring-2 ring-offset-1 ${opt.ring}` : ''}`} />
+                                <span className="text-[10px] font-bold tracking-wider uppercase text-slate-500">Stufe {idx + 1}</span>
+                              </div>
+                              <p className="text-sm font-semibold text-slate-800 leading-tight mb-1">{opt.label}</p>
+                              <p className="text-xs text-slate-500 leading-tight">{opt.desc}</p>
+                            </button>
+                          ))}
+                        </div>
                       </div>
 
                       <div>
