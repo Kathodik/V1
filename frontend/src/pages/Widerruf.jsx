@@ -1,13 +1,64 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '../components/ui/button';
-import { Download, FileText, AlertCircle } from 'lucide-react';
+import { Input } from '../components/ui/input';
+import { Textarea } from '../components/ui/textarea';
+import { Download, FileText, AlertCircle, Send } from 'lucide-react';
 import { AnimateOnScroll } from '../components/AnimateOnScroll';
 import { useParallax } from '../hooks/useScrollAnimation';
+import { toast } from 'sonner';
 
 const PDF_URL = 'https://customer-assets.emergentagent.com/job_46881bec-8eb9-4794-935a-8a25c0642f1f/artifacts/jg08x399_Widerrufsformular_Kathodik_Aptos.pdf';
 
 const Widerruf = () => {
   const scrollY = useParallax();
+  const today = new Date().toISOString().slice(0, 10);
+  const [form, setForm] = useState({
+    leistung: '',
+    bestelltAm: '',
+    erhaltenAm: '',
+    name: '',
+    anschrift: '',
+    datum: today,
+  });
+
+  const update = (key) => (e) => setForm({ ...form, [key]: e.target.value });
+
+  const buildMailto = () => {
+    const subject = `Widerruf – ${form.name || 'Vertrag'}`;
+    const body =
+`Sehr geehrte Damen und Herren,
+
+hiermit widerrufe ich den von mir abgeschlossenen Vertrag über die Erbringung der folgenden Dienstleistung / die Lieferung der folgenden Waren:
+
+${form.leistung || '(bitte angeben)'}
+
+Bestellt am: ${form.bestelltAm || '(bitte angeben)'}
+Erhalten am: ${form.erhaltenAm || '(bitte angeben)'}
+
+Name des/der Verbraucher(s):
+${form.name || '(bitte angeben)'}
+
+Anschrift des/der Verbraucher(s):
+${form.anschrift || '(bitte angeben)'}
+
+Datum: ${form.datum || today}
+
+Mit freundlichen Grüßen
+${form.name || ''}`;
+    return `mailto:service@kathodik.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  };
+
+  const handleSend = () => {
+    if (!form.name || !form.leistung) {
+      toast.error('Bitte mindestens Name und Leistung/Ware angeben');
+      return;
+    }
+    window.location.href = buildMailto();
+    toast.success('E-Mail-Programm wird geöffnet…');
+  };
+
+  const inputCls = "bg-white border-slate-200 focus:border-[#2c7a7b] focus:ring-[#2c7a7b]/20 text-sm";
+  const labelCls = "text-xs font-semibold tracking-wider uppercase text-slate-500 mb-1.5 block";
 
   return (
     <div className="bg-white min-h-screen">
@@ -147,62 +198,95 @@ const Widerruf = () => {
                   </div>
 
                   <div className="pt-4 border-t border-slate-100">
-                    <p className="text-sm text-slate-700 leading-relaxed">
+                    <p className="text-sm text-slate-700 leading-relaxed mb-3">
                       Hiermit widerrufe(n) ich/wir <span className="text-slate-400">(*)</span> den von mir/uns <span className="text-slate-400">(*)</span> abgeschlossenen Vertrag über die Erbringung der folgenden Dienstleistung / die Lieferung der folgenden Waren <span className="text-slate-400">(*)</span>:
                     </p>
-                    <div className="mt-3 border-b border-dashed border-slate-300 h-6" />
-                    <div className="mt-2 border-b border-dashed border-slate-300 h-6" />
+                    <Textarea
+                      value={form.leistung}
+                      onChange={update('leistung')}
+                      placeholder="z.B. Vergoldung eines Ringes, Auftrags-Nr. 12345"
+                      className={`${inputCls} min-h-20`}
+                      data-testid="widerruf-leistung"
+                    />
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 pt-4 border-t border-slate-100">
                     <div>
-                      <p className="text-xs font-semibold tracking-wider uppercase text-slate-400 mb-1">Bestellt am <span className="text-slate-400 normal-case">(*)</span></p>
-                      <div className="border-b border-dashed border-slate-300 h-6" />
+                      <label className={labelCls}>Bestellt am <span className="text-slate-400 normal-case">(*)</span></label>
+                      <Input
+                        type="date"
+                        value={form.bestelltAm}
+                        onChange={update('bestelltAm')}
+                        className={inputCls}
+                        data-testid="widerruf-bestellt-am"
+                      />
                     </div>
                     <div>
-                      <p className="text-xs font-semibold tracking-wider uppercase text-slate-400 mb-1">Erhalten am <span className="text-slate-400 normal-case">(*)</span></p>
-                      <div className="border-b border-dashed border-slate-300 h-6" />
+                      <label className={labelCls}>Erhalten am <span className="text-slate-400 normal-case">(*)</span></label>
+                      <Input
+                        type="date"
+                        value={form.erhaltenAm}
+                        onChange={update('erhaltenAm')}
+                        className={inputCls}
+                        data-testid="widerruf-erhalten-am"
+                      />
                     </div>
                   </div>
 
                   <div className="pt-4 border-t border-slate-100">
-                    <p className="text-xs font-semibold tracking-wider uppercase text-slate-400 mb-1">Name des/der Verbraucher(s)</p>
-                    <div className="border-b border-dashed border-slate-300 h-6" />
+                    <label className={labelCls}>Name des/der Verbraucher(s)</label>
+                    <Input
+                      value={form.name}
+                      onChange={update('name')}
+                      placeholder="Vor- und Nachname"
+                      className={inputCls}
+                      data-testid="widerruf-name"
+                    />
                   </div>
 
                   <div className="pt-4 border-t border-slate-100">
-                    <p className="text-xs font-semibold tracking-wider uppercase text-slate-400 mb-1">Anschrift des/der Verbraucher(s)</p>
-                    <div className="border-b border-dashed border-slate-300 h-6" />
-                    <div className="mt-2 border-b border-dashed border-slate-300 h-6" />
+                    <label className={labelCls}>Anschrift des/der Verbraucher(s)</label>
+                    <Textarea
+                      value={form.anschrift}
+                      onChange={update('anschrift')}
+                      placeholder="Straße & Hausnummer&#10;PLZ Ort"
+                      className={`${inputCls} min-h-20`}
+                      data-testid="widerruf-anschrift"
+                    />
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 pt-4 border-t border-slate-100">
-                    <div>
-                      <p className="text-xs font-semibold tracking-wider uppercase text-slate-400 mb-1">Datum</p>
-                      <div className="border-b border-dashed border-slate-300 h-6" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-semibold tracking-wider uppercase text-slate-400 mb-1">Unterschrift des/der Verbraucher(s)</p>
-                      <div className="border-b border-dashed border-slate-300 h-6" />
-                      <p className="text-[10px] text-slate-400 mt-1">(nur bei Mitteilung auf Papier)</p>
-                    </div>
+                  <div className="pt-4 border-t border-slate-100">
+                    <label className={labelCls}>Datum</label>
+                    <Input
+                      type="date"
+                      value={form.datum}
+                      onChange={update('datum')}
+                      className={`${inputCls} max-w-xs`}
+                      data-testid="widerruf-datum"
+                    />
+                    <p className="text-[10px] text-slate-400 mt-2">Unterschrift erfolgt nur bei Mitteilung auf Papier.</p>
                   </div>
 
                   <p className="text-xs text-slate-400 pt-3 border-t border-slate-100">(*) Unzutreffendes streichen.</p>
                 </div>
 
                 <div className="mt-6 flex flex-col sm:flex-row gap-3">
+                  <Button
+                    onClick={handleSend}
+                    className="flex-1 bg-[#2c7a7b] hover:bg-[#285e61] text-white rounded-full py-6"
+                    data-testid="send-widerruf"
+                  >
+                    <Send className="h-4 w-4 mr-2" /> Widerruf per E-Mail senden
+                  </Button>
                   <a href={PDF_URL} target="_blank" rel="noopener noreferrer" className="flex-1">
-                    <Button className="w-full bg-[#2c7a7b] hover:bg-[#285e61] text-white rounded-full py-6" data-testid="download-widerrufs-pdf">
-                      <Download className="h-4 w-4 mr-2" /> Widerrufsformular als PDF herunterladen
-                    </Button>
-                  </a>
-                  <a href="mailto:service@kathodik.com?subject=Widerruf&body=Hiermit%20widerrufe%20ich%20den%20abgeschlossenen%20Vertrag.%0A%0ABestellt%20am%3A%20%0AErhalten%20am%3A%20%0AName%3A%20%0AAnschrift%3A%20%0ADatum%3A%20" className="flex-1">
-                    <Button variant="outline" className="w-full rounded-full py-6 border-slate-300" data-testid="email-widerruf">
-                      Per E-Mail widerrufen
+                    <Button variant="outline" className="w-full rounded-full py-6 border-slate-300" data-testid="download-widerrufs-pdf">
+                      <Download className="h-4 w-4 mr-2" /> PDF herunterladen
                     </Button>
                   </a>
                 </div>
+                <p className="text-xs text-slate-400 mt-3 text-center">
+                  Beim Klick auf „Widerruf per E-Mail senden" öffnet sich Ihr E-Mail-Programm mit allen Angaben vorausgefüllt.
+                </p>
               </div>
             </AnimateOnScroll>
 
