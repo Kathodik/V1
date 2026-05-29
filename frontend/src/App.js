@@ -16,6 +16,7 @@ import PortalLogin from './pages/PortalLogin';
 import CustomerPortal from './pages/CustomerPortal';
 import AdminPortal from './pages/AdminPortal';
 import AGB from './pages/AGB';
+import Datenschutz from './pages/Datenschutz';
 import useAnalytics from './hooks/useAnalytics';
 import './App.css';
 
@@ -36,6 +37,7 @@ function AppContent() {
           <Route path="/portal" element={<CustomerPortal />} />
           <Route path="/admin" element={<AdminPortal />} />
           <Route path="/agb" element={<AGB />} />
+          <Route path="/datenschutz" element={<Datenschutz />} />
         </Routes>
       </main>
       <Footer />

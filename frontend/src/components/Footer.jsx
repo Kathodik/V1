@@ -52,6 +52,7 @@ const Footer = () => {
               {[
                 { name: 'Kundenportal', href: '/portal/login' },
                 { name: 'AGB & Haftungsausschluss', href: '/agb' },
+                { name: 'Datenschutz', href: '/datenschutz' },
                 { name: 'Impressum', href: '/imprint' },
               ].map((link) => (
                 <li key={link.name}>
