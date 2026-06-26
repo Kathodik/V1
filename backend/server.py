@@ -723,7 +723,39 @@ async def create_saved_request(request: SavedRequestCreate):
                 "notified": False,
                 "created_at": datetime.now(timezone.utc).isoformat()
             })
-    
+
+    # Notify admin about new saved request
+    await send_email_via_resend(
+        to_email="service@kathodik.com",
+        subject=f"Neue gespeicherte Anfrage von {request.name}",
+        html_content=f"""
+        <h2>Neue gespeicherte Anfrage (Auftragsannahme pausiert)</h2>
+        <p><strong>Name:</strong> {request.name}</p>
+        <p><strong>E-Mail:</strong> {request.email}</p>
+        <p><strong>Telefon:</strong> {request.phone or 'Nicht angegeben'}</p>
+        <p><strong>Nachricht:</strong></p>
+        <p>{request.message or 'Keine Details'}</p>
+        <p><strong>Benachrichtigen bei Wiederöffnung:</strong> {'Ja' if request.notify_when_open else 'Nein'}</p>
+        <hr>
+        <p><strong>Anfrage-ID:</strong> {request_id}</p>
+        """
+    )
+
+    # Confirm to customer
+    await send_email_via_resend(
+        to_email=request.email,
+        subject="Kathodik - Ihre Anfrage wurde gespeichert",
+        html_content=f"""
+        <h2>Vielen Dank, {request.name}!</h2>
+        <p>Wir können aktuell aufgrund hoher Auslastung keine neuen Aufträge annehmen –
+        Ihre Anfrage wurde aber sicher bei uns gespeichert.</p>
+        {'<p>Wir benachrichtigen Sie automatisch per E-Mail, sobald wir wieder Aufträge annehmen.</p>' if request.notify_when_open else ''}
+        <br>
+        <p>Mit freundlichen Grüßen,</p>
+        <p><strong>Kathodik - Galvanotechnik</strong><br>Hannes Barfuß</p>
+        """
+    )
+
     return SavedRequestResponse(id=request_id, message="Anfrage gespeichert")
 
 @api_router.get("/saved-requests")
@@ -744,17 +776,21 @@ class ConceptImageRequest(BaseModel):
     reference_image: Optional[str] = None  # base64 encoded
 
 class ConfiguratorOrderRequest(BaseModel):
-    order_type: str  # "upload", "partner_model", "ai_generate"
+    order_type: str  # "upload", "partner_model", "ai_generate", "mobile_service", "metal_order"
     name: str
     email: EmailStr
     phone: Optional[str] = None
     description: Optional[str] = None
     metal: Optional[str] = None
     finish: Optional[str] = None
+    quantity: Optional[str] = None
+    base_material: Optional[str] = None
+    condition: Optional[str] = None
     file_data: Optional[str] = None  # base64 encoded file for upload path
     file_name: Optional[str] = None
     concept_image: Optional[str] = None  # base64 of AI generated concept
     reference_image: Optional[str] = None  # base64 of user reference image
+    images: Optional[List[str]] = None  # base64 list of user-uploaded part photos
 
 @api_router.post("/configurator/generate-concept")
 async def generate_concept(request: ConceptImageRequest):
@@ -793,10 +829,14 @@ async def create_configurator_order(request: ConfiguratorOrderRequest):
         "description": request.description,
         "metal": request.metal,
         "finish": request.finish,
+        "quantity": request.quantity,
+        "base_material": request.base_material,
+        "condition": request.condition,
         "file_name": request.file_name,
         "has_file": request.file_data is not None,
         "has_concept_image": request.concept_image is not None,
         "has_reference_image": request.reference_image is not None,
+        "image_count": len(request.images) if request.images else 0,
         "status": "new",
         "created_at": datetime.now(timezone.utc).isoformat()
     }
@@ -823,7 +863,15 @@ async def create_configurator_order(request: ConfiguratorOrderRequest):
             "file_name": "reference.png",
             "type": "reference"
         })
-    
+    if request.images:
+        for i, img in enumerate(request.images):
+            await db.configurator_files.insert_one({
+                "order_id": order_id,
+                "file_data": img,
+                "file_name": f"part_image_{i+1}.png",
+                "type": "part_image"
+            })
+
     await db.configurator_orders.insert_one(doc)
     
     # Build order type label
@@ -831,24 +879,38 @@ async def create_configurator_order(request: ConfiguratorOrderRequest):
         "upload": "Eigene Datei hochgeladen",
         "partner_model": "Modellierung durch Partner",
         "ai_generate": "KI-generiertes Konzept",
-        "mobile_service": "Mobile Dienstleistung (Vor-Ort)"
+        "mobile_service": "Mobile Dienstleistung (Vor-Ort)",
+        "metal_order": "Metall-Beschichtungsauftrag"
     }
     type_label = type_labels.get(request.order_type, request.order_type)
+
+    condition_labels = {
+        "neu": "Stufe 1: Neu / Neuwertig",
+        "leicht": "Stufe 2: Leicht oxidiert / Kratzer",
+        "stark": "Stufe 3: Starker Rost / Tiefenkratzer",
+    }
+    condition_label = condition_labels.get(request.condition, request.condition or "Nicht angegeben")
     
     # Notify admin
     await send_email_via_resend(
         to_email="service@kathodik.com",
-        subject=f"Neuer 3D-Konfigurator Auftrag von {request.name}",
+        subject=f"Neuer Auftrag ({type_label}) von {request.name}",
         html_content=f"""
-        <h2>Neuer 3D-Konfigurator Auftrag</h2>
+        <h2>Neuer Auftrag</h2>
         <p><strong>Auftragstyp:</strong> {type_label}</p>
         <p><strong>Name:</strong> {request.name}</p>
         <p><strong>E-Mail:</strong> {request.email}</p>
         <p><strong>Telefon:</strong> {request.phone or 'Nicht angegeben'}</p>
         <p><strong>Metall:</strong> {request.metal or 'Nicht angegeben'}</p>
+        <p><strong>Finish:</strong> {request.finish or 'Nicht angegeben'}</p>
+        <p><strong>Stückzahl:</strong> {request.quantity or 'Nicht angegeben'}</p>
+        <p><strong>Grundmaterial:</strong> {request.base_material or 'Nicht angegeben'}</p>
+        <p><strong>Zustand:</strong> {condition_label}</p>
         <p><strong>Beschreibung:</strong></p>
         <p>{request.description or 'Keine Beschreibung'}</p>
+        <p><strong>Bilder:</strong> {doc['image_count']} Bauteilfoto(s) angehängt</p>
         <p><strong>Datei hochgeladen:</strong> {'Ja - ' + (request.file_name or '') if request.file_data else 'Nein'}</p>
+        <hr>
         <p><strong>Auftrags-ID:</strong> {order_id}</p>
         """
     )

@@ -355,6 +355,8 @@ const Services = () => {
   const [saveAgbAccepted, setSaveAgbAccepted] = useState(false);
   const [baseMaterial, setBaseMaterial] = useState('');
   const [condition, setCondition] = useState('');
+  const [orderContact, setOrderContact] = useState({ name: '', email: '', phone: '' });
+  const [orderSubmitting, setOrderSubmitting] = useState(false);
   const scrollY = useParallax();
   const detailRef = useRef(null);
 
@@ -386,7 +388,7 @@ const Services = () => {
     toast.success(`${files.length} Bild(er) hinzugefügt`);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!selectedMetal || !selectedFinish || !quantity || images.length === 0) {
       toast.error('Bitte füllen Sie alle Pflichtfelder aus');
@@ -396,20 +398,48 @@ const Services = () => {
       toast.error('Bitte wählen Sie den Zustand des Bauteils');
       return;
     }
+    if (!orderContact.name || !orderContact.email) {
+      toast.error('Bitte Name und E-Mail angeben');
+      return;
+    }
     if (!acceptingOrders) {
       setShowSaveForm(true);
       return;
     }
     if (!orderAgbAccepted) {
-      toast.error('Bitte stimmen Sie den AGB und dem Haftungsausschluss zu');
+      toast.error('Bitte stimmen Sie den rechtlichen Hinweisen zu');
       return;
     }
     const finish = selectedMetal.finishes.find(f => f.id === selectedFinish);
-    toast.success(`Anfrage erfolgreich! ${selectedMetal.name} - ${finish.name}`);
-    setSelectedMetal(null);
-    setOrderAgbAccepted(false);
-    setBaseMaterial('');
-    setCondition('');
+    setOrderSubmitting(true);
+    try {
+      await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/configurator/order`, {
+        order_type: 'metal_order',
+        name: orderContact.name,
+        email: orderContact.email,
+        phone: orderContact.phone,
+        description: description,
+        metal: selectedMetal.name,
+        finish: finish.name,
+        quantity: String(quantity),
+        base_material: baseMaterial,
+        condition: condition,
+        images: images,
+      });
+      toast.success(`Anfrage erfolgreich! Bestätigung per E-Mail unterwegs.`);
+      setSelectedMetal(null);
+      setOrderAgbAccepted(false);
+      setBaseMaterial('');
+      setCondition('');
+      setOrderContact({ name: '', email: '', phone: '' });
+      setQuantity('');
+      setDescription('');
+      setImages([]);
+    } catch (err) {
+      toast.error('Fehler beim Senden – bitte erneut versuchen');
+    } finally {
+      setOrderSubmitting(false);
+    }
   };
 
   const handleSaveRequest = async (e) => {
@@ -1015,10 +1045,28 @@ const Services = () => {
                         <AlertDescription className="text-slate-600">{companyInfo.shippingNote}</AlertDescription>
                       </Alert>
 
+                      <div className="space-y-4 p-5 bg-slate-50 rounded-xl border border-slate-200">
+                        <p className="text-sm font-bold text-slate-800">Ihre Kontaktdaten</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="order-name" className="text-slate-700 mb-1.5 block text-sm font-medium">Name *</Label>
+                            <Input id="order-name" value={orderContact.name} onChange={(e) => setOrderContact({...orderContact, name: e.target.value})} placeholder="Vor- und Nachname" className="bg-white border-slate-200" required data-testid="order-name-input" />
+                          </div>
+                          <div>
+                            <Label htmlFor="order-email" className="text-slate-700 mb-1.5 block text-sm font-medium">E-Mail *</Label>
+                            <Input id="order-email" type="email" value={orderContact.email} onChange={(e) => setOrderContact({...orderContact, email: e.target.value})} placeholder="ihre@email.de" className="bg-white border-slate-200" required data-testid="order-email-input" />
+                          </div>
+                        </div>
+                        <div>
+                          <Label htmlFor="order-phone" className="text-slate-700 mb-1.5 block text-sm font-medium">Telefon <span className="text-slate-400 font-normal">(optional)</span></Label>
+                          <Input id="order-phone" type="tel" value={orderContact.phone} onChange={(e) => setOrderContact({...orderContact, phone: e.target.value})} placeholder="+49 ..." className="bg-white border-slate-200" data-testid="order-phone-input" />
+                        </div>
+                      </div>
+
                       <LegalConsent checked={orderAgbAccepted} onCheckedChange={setOrderAgbAccepted} id="agb-order" />
 
-                      <Button type="submit" className="w-full bg-[#2c7a7b] hover:bg-[#285e61] text-white py-6 text-lg rounded-full transition-all duration-300" data-testid="submit-order-btn">
-                        {acceptingOrders ? 'Anfrage absenden' : 'Anfrage speichern'}
+                      <Button type="submit" disabled={orderSubmitting} className="w-full bg-[#2c7a7b] hover:bg-[#285e61] text-white py-6 text-lg rounded-full transition-all duration-300 disabled:opacity-60" data-testid="submit-order-btn">
+                        {orderSubmitting ? 'Wird gesendet...' : (acceptingOrders ? 'Anfrage absenden' : 'Anfrage speichern')}
                       </Button>
                     </form>
                     )}
