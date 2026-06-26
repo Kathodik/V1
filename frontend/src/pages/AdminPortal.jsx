@@ -452,20 +452,42 @@ const AdminPortal = () => {
                       </CardContent>
                     </Card>
                   ) : (
-                    contactMessages.map((msg, i) => (
-                      <Card key={i} className="bg-white border-slate-200">
-                        <CardContent className="p-4">
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <p className="font-semibold text-slate-800">{msg.name}</p>
-                              <p className="text-sm text-slate-500">{msg.email} {msg.phone ? `| ${msg.phone}` : ''}</p>
-                              <p className="text-sm text-slate-600 mt-2">{msg.message}</p>
+                    contactMessages.map((msg, i) => {
+                      const isConfirmed = msg.status === 'confirmed';
+                      const isPending = msg.status === 'pending_confirmation';
+                      return (
+                        <Card key={i} className="bg-white border-slate-200">
+                          <CardContent className="p-4">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 flex-wrap mb-1">
+                                  <p className="font-semibold text-slate-800">{msg.name}</p>
+                                  {isConfirmed && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-[11px] font-semibold">
+                                      ✓ Bestätigt
+                                    </span>
+                                  )}
+                                  {isPending && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[11px] font-semibold">
+                                      ⧖ Wartet auf Bestätigung
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-sm text-slate-500">{msg.email} {msg.phone ? `| ${msg.phone}` : ''}</p>
+                                <p className="text-sm text-slate-600 mt-2">{msg.message}</p>
+                                {isConfirmed && msg.confirmed_at && (
+                                  <div className="mt-3 pt-3 border-t border-slate-100 text-xs text-slate-500 space-y-0.5">
+                                    <p>✓ Datenschutz akzeptiert{msg.datenschutz_accepted_at ? ` (${new Date(msg.datenschutz_accepted_at).toLocaleString('de-DE')})` : ''}</p>
+                                    <p>✓ AGB · Haftungsausschluss · Widerruf bestätigt am {new Date(msg.confirmed_at).toLocaleString('de-DE')}</p>
+                                  </div>
+                                )}
+                              </div>
+                              <p className="text-xs text-slate-400 whitespace-nowrap">{new Date(msg.created_at).toLocaleDateString('de-DE')}</p>
                             </div>
-                            <p className="text-xs text-slate-400">{new Date(msg.created_at).toLocaleDateString('de-DE')}</p>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))
+                          </CardContent>
+                        </Card>
+                      );
+                    })
                   )}
                 </div>
               </TabsContent>

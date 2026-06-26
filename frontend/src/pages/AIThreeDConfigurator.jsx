@@ -12,6 +12,7 @@ import { useParallax } from '../hooks/useScrollAnimation';
 import { metals } from '../data/mockData';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
+import LegalConsent from '../components/LegalConsent';
 import axios from 'axios';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -598,12 +599,7 @@ const AIThreeDConfigurator = () => {
                         />
                       </div>
                     </div>
-                    <div className="flex items-start space-x-3 p-4 bg-slate-50 rounded-xl border border-slate-200" data-testid="agb-checkbox-area">
-                      <Checkbox id="agb-configurator" checked={agbAccepted} onCheckedChange={setAgbAccepted} className="mt-0.5" data-testid="agb-checkbox" />
-                      <Label htmlFor="agb-configurator" className="text-sm text-slate-700 cursor-pointer leading-relaxed">
-                        Ich akzeptiere die <Link to="/agb" target="_blank" className="text-[#2c7a7b] font-semibold underline hover:text-[#285e61]">AGB und den Haftungsausschluss</Link>. *
-                      </Label>
-                    </div>
+                    <LegalConsent checked={agbAccepted} onCheckedChange={setAgbAccepted} id="agb-configurator" />
                     <div className="flex gap-3 pt-4">
                       <Button variant="outline" onClick={() => setStep(3)} className="flex-1 py-6 rounded-full">
                         <ArrowLeft className="h-5 w-5 mr-2" /> Zurück

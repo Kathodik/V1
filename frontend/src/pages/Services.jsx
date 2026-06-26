@@ -14,6 +14,7 @@ import { metals, companyInfo } from '../data/mockData';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import CoatingPreview from '../components/CoatingPreview';
+import LegalConsent from '../components/LegalConsent';
 import axios from 'axios';
 
 /* ── Per-element realistic texture config ── */
@@ -703,12 +704,7 @@ const Services = () => {
                                 <Label className="text-slate-800 font-semibold mb-2 block text-sm">Telefon</Label>
                                 <Input type="tel" value={mobileContact.phone} onChange={(e) => setMobileContact({...mobileContact, phone: e.target.value})} placeholder="Optional" className="bg-white border-slate-200 text-sm" data-testid="mobile-phone" />
                               </div>
-                              <div className="flex items-start space-x-3 p-3 bg-slate-50 rounded-lg border border-slate-200" data-testid="mobile-agb-area">
-                                <Checkbox id="agb-mobile" checked={mobileAgbAccepted} onCheckedChange={setMobileAgbAccepted} className="mt-0.5" data-testid="mobile-agb-checkbox" />
-                                <Label htmlFor="agb-mobile" className="text-xs text-slate-700 cursor-pointer leading-relaxed">
-                                  Ich akzeptiere die <Link to="/agb" target="_blank" className="text-[#2c7a7b] font-semibold underline">AGB und den Haftungsausschluss</Link>. *
-                                </Label>
-                              </div>
+                              <LegalConsent checked={mobileAgbAccepted} onCheckedChange={setMobileAgbAccepted} id="agb-mobile" size="xs" />
                               <div className="flex gap-2">
                                 <Button variant="outline" onClick={() => setMobileStep(1)} className="flex-1 rounded-full text-sm">Zurück</Button>
                                 <Button
@@ -903,12 +899,7 @@ const Services = () => {
                             Benachrichtigen, sobald wieder Aufträge angenommen werden
                           </Label>
                         </div>
-                        <div className="flex items-start space-x-3 p-4 bg-slate-50 rounded-xl border border-slate-200" data-testid="save-agb-area">
-                          <Checkbox id="agb-save" checked={saveAgbAccepted} onCheckedChange={setSaveAgbAccepted} className="mt-0.5" data-testid="save-agb-checkbox" />
-                          <Label htmlFor="agb-save" className="text-sm text-slate-700 cursor-pointer leading-relaxed">
-                            Ich akzeptiere die <Link to="/agb" target="_blank" className="text-[#2c7a7b] font-semibold underline">AGB und den Haftungsausschluss</Link>. *
-                          </Label>
-                        </div>
+                        <LegalConsent checked={saveAgbAccepted} onCheckedChange={setSaveAgbAccepted} id="agb-save" />
                         <Button type="submit" className="w-full bg-[#2c7a7b] hover:bg-[#285e61] text-white py-6 text-lg rounded-full" data-testid="save-request-btn">
                           <Save className="h-5 w-5 mr-2" /> Anfrage speichern
                         </Button>
@@ -1024,12 +1015,7 @@ const Services = () => {
                         <AlertDescription className="text-slate-600">{companyInfo.shippingNote}</AlertDescription>
                       </Alert>
 
-                      <div className="flex items-start space-x-3 p-4 bg-slate-50 rounded-xl border border-slate-200" data-testid="order-agb-area">
-                        <Checkbox id="agb-order" checked={orderAgbAccepted} onCheckedChange={setOrderAgbAccepted} className="mt-0.5" data-testid="order-agb-checkbox" />
-                        <Label htmlFor="agb-order" className="text-sm text-slate-700 cursor-pointer leading-relaxed">
-                          Ich akzeptiere die <Link to="/agb" target="_blank" className="text-[#2c7a7b] font-semibold underline hover:text-[#285e61]">AGB und den Haftungsausschluss</Link>. *
-                        </Label>
-                      </div>
+                      <LegalConsent checked={orderAgbAccepted} onCheckedChange={setOrderAgbAccepted} id="agb-order" />
 
                       <Button type="submit" className="w-full bg-[#2c7a7b] hover:bg-[#285e61] text-white py-6 text-lg rounded-full transition-all duration-300" data-testid="submit-order-btn">
                         {acceptingOrders ? 'Anfrage absenden' : 'Anfrage speichern'}

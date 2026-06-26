@@ -38,7 +38,7 @@ const Contact = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!agbAccepted) {
-      toast.error('Bitte stimmen Sie den AGB und dem Haftungsausschluss zu');
+      toast.error('Bitte stimmen Sie der Datenschutzerklärung zu');
       return;
     }
     setLoading(true);
@@ -193,7 +193,7 @@ const Contact = () => {
                       <div className="flex items-start space-x-3 p-4 bg-slate-50 rounded-xl border border-slate-200" data-testid="contact-agb-area">
                         <Checkbox id="agb-contact" checked={agbAccepted} onCheckedChange={setAgbAccepted} className="mt-0.5" data-testid="contact-agb-checkbox" />
                         <Label htmlFor="agb-contact" className="text-sm text-slate-700 cursor-pointer leading-relaxed">
-                          Ich akzeptiere die <Link to="/agb" target="_blank" className="text-[#2c7a7b] font-semibold underline hover:text-[#285e61]">AGB und den Haftungsausschluss</Link>. *
+                          Ich habe die <Link to="/datenschutz" target="_blank" className="text-[#2c7a7b] font-semibold underline hover:text-[#285e61]">Datenschutzerklärung</Link> gelesen und akzeptiere diese. *
                         </Label>
                       </div>
 

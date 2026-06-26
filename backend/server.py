@@ -61,18 +61,24 @@ class ContactFormRequest(BaseModel):
     email: EmailStr
     phone: Optional[str] = None
     message: str
+    datenschutz_accepted: bool = True
 
 class ContactFormResponse(BaseModel):
     id: str
     message: str
 
+class ContactConfirmRequest(BaseModel):
+    agb_accepted: bool
+    haftung_accepted: bool
+    widerruf_accepted: bool
+
 # Resend email helper
 async def send_email_via_resend(to_email: str, subject: str, html_content: str):
-    """Send email using Resend API (non-blocking)"""
+    """Send email using Resend API (non-blocking). Falls back to verified default sender."""
     resend_key = os.environ.get('RESEND_API_KEY')
     sender = os.environ.get('SENDER_EMAIL', 'onboarding@resend.dev')
     if not resend_key:
-        logger.warning("RESEND_API_KEY not set, skipping email send")
+        logger.warning(f"RESEND_API_KEY not set, skipping email to {to_email}")
         return None
     try:
         import resend
@@ -81,13 +87,30 @@ async def send_email_via_resend(to_email: str, subject: str, html_content: str):
             "from": sender,
             "to": [to_email],
             "subject": subject,
-            "html": html_content
+            "html": html_content,
         }
         result = await asyncio.to_thread(resend.Emails.send, params)
-        logger.info(f"Email sent to {to_email}: {result}")
+        logger.info(f"Email sent OK to {to_email} via {sender} - id={result.get('id') if isinstance(result, dict) else result}")
         return result
     except Exception as e:
-        logger.error(f"Email send failed: {e}")
+        err_msg = str(e)
+        logger.error(f"Email send FAILED to {to_email} via {sender}: {err_msg}")
+        # Fallback: try with Resend's verified default sender (only delivers to account owner)
+        if 'domain is not verified' in err_msg.lower() or 'verify a domain' in err_msg.lower():
+            try:
+                import resend
+                resend.api_key = resend_key
+                fallback_params = {
+                    "from": "Kathodik <onboarding@resend.dev>",
+                    "to": [to_email],
+                    "subject": f"[Fallback] {subject}",
+                    "html": html_content,
+                }
+                result = await asyncio.to_thread(resend.Emails.send, fallback_params)
+                logger.info(f"Fallback email sent to {to_email}")
+                return result
+            except Exception as e2:
+                logger.error(f"Fallback email also failed to {to_email}: {e2}")
         return None
 
 # Add your routes to the router instead of directly to app
@@ -170,20 +193,31 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
 # Contact Form endpoint
 @api_router.post("/contact", response_model=ContactFormResponse)
 async def submit_contact(form: ContactFormRequest):
-    """Submit a contact form message"""
+    """Submit a contact form message - sends confirmation link to customer."""
     contact_id = str(uuid.uuid4())
+    confirmation_token = secrets.token_urlsafe(32)
+    frontend_url = os.environ.get('FRONTEND_URL', '').rstrip('/')
+    confirm_link = f"{frontend_url}/bestaetigung/{confirmation_token}" if frontend_url else f"/bestaetigung/{confirmation_token}"
+
     doc = {
         "id": contact_id,
         "name": form.name,
         "email": form.email,
         "phone": form.phone,
         "message": form.message,
-        "status": "new",
+        "status": "pending_confirmation",
+        "datenschutz_accepted": True,
+        "datenschutz_accepted_at": datetime.now(timezone.utc).isoformat(),
+        "confirmation_token": confirmation_token,
+        "agb_accepted": False,
+        "haftung_accepted": False,
+        "widerruf_accepted": False,
+        "confirmed_at": None,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     await db.contact_messages.insert_one(doc)
 
-    # Send notification email to company
+    # Send notification email to admin
     await send_email_via_resend(
         to_email="service@kathodik.com",
         subject=f"Neue Kontaktanfrage von {form.name}",
@@ -194,27 +228,104 @@ async def submit_contact(form: ContactFormRequest):
         <p><strong>Telefon:</strong> {form.phone or 'Nicht angegeben'}</p>
         <p><strong>Nachricht:</strong></p>
         <p>{form.message}</p>
+        <p><em>Status: Wartet auf Bestaetigung des Kunden (AGB, Haftung, Widerruf)</em></p>
         """
     )
 
-    # Send confirmation email to customer
+    # Send confirmation link to customer
     await send_email_via_resend(
         to_email=form.email,
-        subject="Kathodik - Ihre Anfrage wurde empfangen",
+        subject="Kathodik - Bitte bestaetigen Sie Ihre Anfrage",
         html_content=f"""
-        <h2>Vielen Dank fuer Ihre Nachricht, {form.name}!</h2>
-        <p>Wir haben Ihre Anfrage erhalten und werden uns in Kuerze bei Ihnen melden.</p>
+        <h2>Vielen Dank fuer Ihre Anfrage, {form.name}!</h2>
+        <p>Wir haben Ihre Nachricht erhalten. Damit wir den Auftrag verbindlich anlegen koennen,
+        bestaetigen Sie bitte unsere <strong>AGB</strong>, den <strong>Haftungsausschluss</strong>
+        und die <strong>Widerrufsbelehrung</strong> ueber den folgenden Link:</p>
+        <p style="margin: 24px 0;">
+            <a href="{confirm_link}" style="background:#2c7a7b;color:#fff;padding:12px 24px;text-decoration:none;border-radius:9999px;font-weight:600;">
+                Auftrag jetzt bestaetigen
+            </a>
+        </p>
+        <p style="color:#64748b;font-size:13px;">Oder kopieren Sie diesen Link in Ihren Browser:<br>{confirm_link}</p>
+        <p>Erst nach Ihrer Bestaetigung beginnen wir mit der Bearbeitung.</p>
         <br>
         <p>Mit freundlichen Gruessen,</p>
-        <p><strong>Kathodik - Galvanotechnik</strong></p>
-        <p>Inhaber: Hannes Barfuss</p>
+        <p><strong>Kathodik - Galvanotechnik</strong><br>Hannes Barfuss</p>
         """
     )
 
     return ContactFormResponse(
         id=contact_id,
-        message="Nachricht erfolgreich gesendet"
+        message="Bestaetigungslink wurde per E-Mail versendet"
     )
+
+@api_router.get("/contact/confirm/{token}")
+async def get_contact_by_token(token: str):
+    """Get pending contact request by confirmation token (public)."""
+    doc = await db.contact_messages.find_one({"confirmation_token": token}, {"_id": 0, "confirmation_token": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Bestaetigungslink ungueltig oder abgelaufen")
+    return {
+        "id": doc["id"],
+        "name": doc["name"],
+        "email": doc["email"],
+        "message": doc["message"],
+        "status": doc.get("status", "pending_confirmation"),
+        "confirmed_at": doc.get("confirmed_at"),
+        "created_at": doc["created_at"],
+    }
+
+@api_router.post("/contact/confirm/{token}")
+async def confirm_contact(token: str, body: ContactConfirmRequest):
+    """Customer confirms AGB + Haftung + Widerruf for a pending contact request."""
+    if not (body.agb_accepted and body.haftung_accepted and body.widerruf_accepted):
+        raise HTTPException(status_code=400, detail="Bitte alle drei Punkte bestaetigen")
+    doc = await db.contact_messages.find_one({"confirmation_token": token})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Bestaetigungslink ungueltig oder abgelaufen")
+    if doc.get("status") == "confirmed":
+        return {"status": "already_confirmed", "id": doc["id"]}
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+    await db.contact_messages.update_one(
+        {"confirmation_token": token},
+        {"$set": {
+            "agb_accepted": True,
+            "haftung_accepted": True,
+            "widerruf_accepted": True,
+            "confirmed_at": now_iso,
+            "status": "confirmed",
+        }}
+    )
+
+    # Notify admin
+    await send_email_via_resend(
+        to_email="service@kathodik.com",
+        subject=f"Auftrag bestaetigt: {doc['name']}",
+        html_content=f"""
+        <h2>Auftrag wurde vom Kunden bestaetigt</h2>
+        <p><strong>Name:</strong> {doc['name']}</p>
+        <p><strong>E-Mail:</strong> {doc['email']}</p>
+        <p><strong>Bestaetigt am:</strong> {now_iso}</p>
+        <p>AGB, Haftungsausschluss und Widerrufsbelehrung wurden zur Kenntnis genommen.</p>
+        <p><strong>Urspruengliche Nachricht:</strong><br>{doc['message']}</p>
+        """
+    )
+    # Notify customer
+    await send_email_via_resend(
+        to_email=doc["email"],
+        subject="Kathodik - Auftrag erfolgreich bestaetigt",
+        html_content=f"""
+        <h2>Vielen Dank, {doc['name']}!</h2>
+        <p>Ihre Bestaetigung der AGB, des Haftungsausschlusses und der Widerrufsbelehrung ist bei uns eingegangen.</p>
+        <p>Wir beginnen nun mit der Bearbeitung und melden uns in Kuerze bei Ihnen.</p>
+        <br>
+        <p>Mit freundlichen Gruessen,</p>
+        <p><strong>Kathodik - Galvanotechnik</strong><br>Hannes Barfuss</p>
+        """
+    )
+
+    return {"status": "confirmed", "id": doc["id"], "confirmed_at": now_iso}
 
 @api_router.get("/contact/messages")
 async def get_contact_messages(current_user: User = Depends(get_current_user)):
