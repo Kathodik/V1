@@ -1,4 +1,5 @@
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, UploadFile, File, Form
+from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -1070,6 +1071,141 @@ async def remove_bg(file: UploadFile = File(...)):
     except Exception as e:
         logging.exception("rembg failed")
         raise HTTPException(status_code=500, detail=f"Freistellen fehlgeschlagen: {str(e)}")
+
+# ---------- PayPal Express Checkout ----------
+PAYPAL_API_URLS = {
+    "sandbox": "https://api-m.sandbox.paypal.com",
+    "live": "https://api-m.paypal.com",
+}
+_paypal_token_cache = {"token": None, "expires_at": 0}
+
+async def _paypal_access_token():
+    """Get (and cache) a PayPal OAuth access token."""
+    import time, httpx
+    now = time.time()
+    if _paypal_token_cache["token"] and _paypal_token_cache["expires_at"] - 30 > now:
+        return _paypal_token_cache["token"]
+    client_id = os.environ.get("PAYPAL_CLIENT_ID")
+    client_secret = os.environ.get("PAYPAL_CLIENT_SECRET")
+    mode = os.environ.get("PAYPAL_MODE", "sandbox").lower()
+    if not (client_id and client_secret):
+        raise HTTPException(status_code=500, detail="PayPal credentials not configured")
+    base = PAYPAL_API_URLS.get(mode, PAYPAL_API_URLS["sandbox"])
+    async with httpx.AsyncClient(timeout=20.0) as http:
+        r = await http.post(
+            f"{base}/v1/oauth2/token",
+            auth=(client_id, client_secret),
+            data={"grant_type": "client_credentials"},
+            headers={"Accept": "application/json"},
+        )
+        if r.status_code != 200:
+            logger.error(f"PayPal auth failed: {r.status_code} {r.text[:200]}")
+            raise HTTPException(status_code=502, detail="PayPal authentication failed")
+        data = r.json()
+        _paypal_token_cache["token"] = data["access_token"]
+        _paypal_token_cache["expires_at"] = now + data.get("expires_in", 3000)
+        return data["access_token"]
+
+def _paypal_base_url():
+    return PAYPAL_API_URLS.get(os.environ.get("PAYPAL_MODE", "sandbox").lower(), PAYPAL_API_URLS["sandbox"])
+
+class PayPalCreateOrderRequest(BaseModel):
+    internal_order_id: Optional[str] = None  # links PayPal payment to our configurator_order
+    amount_eur: float = 49.0
+
+@api_router.post("/paypal/orders")
+async def paypal_create_order(req: PayPalCreateOrderRequest):
+    """Create a PayPal order for the €49 Einsende-Pauschale."""
+    import httpx
+    token = await _paypal_access_token()
+    payload = {
+        "intent": "CAPTURE",
+        "purchase_units": [{
+            "amount": {"currency_code": "EUR", "value": f"{req.amount_eur:.2f}"},
+            "description": "Kathodik - Einsende-Pauschale & Versand-Label",
+            "custom_id": req.internal_order_id or "",
+        }],
+        "application_context": {
+            "brand_name": "Kathodik – Galvanotechnik",
+            "user_action": "PAY_NOW",
+            "shipping_preference": "NO_SHIPPING",
+        },
+    }
+    async with httpx.AsyncClient(timeout=30.0) as http:
+        r = await http.post(
+            f"{_paypal_base_url()}/v2/checkout/orders",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
+                "Prefer": "return=representation",
+            },
+            json=payload,
+        )
+        if r.status_code not in (200, 201):
+            logger.error(f"PayPal create order failed: {r.status_code} {r.text[:400]}")
+            raise HTTPException(status_code=502, detail="PayPal order creation failed")
+        data = r.json()
+        # Link to our internal order if provided
+        if req.internal_order_id:
+            await db.configurator_orders.update_one(
+                {"id": req.internal_order_id},
+                {"$set": {"paypal_order_id": data["id"], "payment_provider": "paypal"}}
+            )
+        return {"id": data["id"], "status": data.get("status")}
+
+@api_router.post("/paypal/orders/{order_id}/capture")
+async def paypal_capture_order(order_id: str):
+    """Capture an approved PayPal order; mark internal order as paid."""
+    import httpx
+    token = await _paypal_access_token()
+    async with httpx.AsyncClient(timeout=30.0) as http:
+        r = await http.post(
+            f"{_paypal_base_url()}/v2/checkout/orders/{order_id}/capture",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
+                "Prefer": "return=representation",
+            },
+        )
+        if r.status_code not in (200, 201):
+            logger.error(f"PayPal capture failed: {r.status_code} {r.text[:400]}")
+            try:
+                return JSONResponse(status_code=r.status_code, content=r.json())
+            except Exception:
+                raise HTTPException(status_code=502, detail="PayPal capture failed")
+        data = r.json()
+        # Find our internal order via custom_id stored at creation time
+        try:
+            pu = data.get("purchase_units", [{}])[0]
+            capture = pu.get("payments", {}).get("captures", [{}])[0]
+            internal_id = pu.get("custom_id") or pu.get("payments", {}).get("captures", [{}])[0].get("custom_id")
+            if internal_id:
+                await db.configurator_orders.update_one(
+                    {"id": internal_id},
+                    {"$set": {
+                        "payment_status": "paid",
+                        "paypal_capture_id": capture.get("id"),
+                        "paid_at": datetime.now(timezone.utc).isoformat(),
+                    }}
+                )
+                # Notify admin
+                order_doc = await db.configurator_orders.find_one({"id": internal_id}, {"_id": 0})
+                if order_doc:
+                    await send_email_via_resend(
+                        to_email="service@kathodik.com",
+                        subject=f"49 EUR bezahlt von {order_doc.get('name')} - Auftrag {internal_id[:8]}",
+                        html_content=f"""
+                        <h2>Einsende-Pauschale wurde bezahlt</h2>
+                        <p><strong>Kunde:</strong> {order_doc.get('name')} ({order_doc.get('email')})</p>
+                        <p><strong>Auftrag:</strong> {order_doc.get('metal')} - {order_doc.get('finish')} ({order_doc.get('quantity')} Stk)</p>
+                        <p><strong>PayPal Capture ID:</strong> {capture.get('id')}</p>
+                        <p><strong>Betrag:</strong> {capture.get('amount', {}).get('value')} {capture.get('amount', {}).get('currency_code')}</p>
+                        <p><strong>Auftrags-ID:</strong> {internal_id}</p>
+                        """
+                    )
+        except Exception as e:
+            logger.warning(f"PayPal capture post-processing failed: {e}")
+        return data
 
 # Include the router in the main app
 app.include_router(api_router)

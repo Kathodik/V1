@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import CoatingPreview from '../components/CoatingPreview';
 import LegalConsent from '../components/LegalConsent';
+import PayPalButton from '../components/PayPalButton';
 import { createCheckoutUrl } from '../lib/shopifyCheckout';
 import axios from 'axios';
 
@@ -389,66 +390,99 @@ const Services = () => {
     toast.success(`${files.length} Bild(er) hinzugefügt`);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  // Validates form and creates the backend order. Returns the created order data or null on failure.
+  const createBackendOrder = async () => {
     if (!selectedMetal || !selectedFinish || !quantity || images.length === 0) {
       toast.error('Bitte füllen Sie alle Pflichtfelder aus und laden Sie mindestens ein Bild hoch');
-      return;
+      return null;
     }
     if (!condition) {
       toast.error('Bitte wählen Sie den Zustand des Bauteils');
-      return;
+      return null;
     }
     if (!orderContact.name || !orderContact.email) {
       toast.error('Bitte Name und E-Mail angeben');
-      return;
-    }
-    if (!acceptingOrders) {
-      setShowSaveForm(true);
-      return;
+      return null;
     }
     if (!orderAgbAccepted) {
       toast.error('Bitte stimmen Sie den rechtlichen Hinweisen zu');
-      return;
+      return null;
     }
     const finish = selectedMetal.finishes.find(f => f.id === selectedFinish);
-    setOrderSubmitting(true);
     try {
-      // 1. Save order to backend first (admin record + customer/admin emails)
-      const orderRes = await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/configurator/order`, {
+      const res = await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/configurator/order`, {
         order_type: 'metal_order',
         name: orderContact.name,
         email: orderContact.email,
         phone: orderContact.phone,
-        description: description,
+        description,
         metal: selectedMetal.name,
         finish: finish.name,
         quantity: String(quantity),
         base_material: baseMaterial,
-        condition: condition,
-        images: images,
+        condition,
+        images,
       });
-      const orderId = orderRes.data.id;
+      return res.data;
+    } catch (err) {
+      console.error('Order creation failed:', err);
+      toast.error('Fehler beim Speichern des Auftrags');
+      return null;
+    }
+  };
 
-      // 2. Create Shopify checkout for the €49 Einsende-Pauschale
-      toast.info('Sie werden zur sicheren Zahlung weitergeleitet…');
+  const resetOrderForm = () => {
+    setSelectedMetal(null);
+    setOrderAgbAccepted(false);
+    setBaseMaterial('');
+    setCondition('');
+    setOrderContact({ name: '', email: '', phone: '' });
+    setQuantity('');
+    setDescription('');
+    setImages([]);
+  };
+
+  // Triggered by the legacy Shopify button (still offered as alternative).
+  const handleShopifyCheckout = async () => {
+    if (!acceptingOrders) { setShowSaveForm(true); return; }
+    setOrderSubmitting(true);
+    try {
+      const order = await createBackendOrder();
+      if (!order) return;
+      toast.info('Sie werden zur Shopify-Zahlung weitergeleitet…');
+      const finish = selectedMetal.finishes.find(f => f.id === selectedFinish);
       const checkoutUrl = await createCheckoutUrl({
         email: orderContact.email,
         customAttributes: [
-          { key: 'Auftrags-ID', value: orderId },
+          { key: 'Auftrags-ID', value: order.id },
           { key: 'Kunde', value: orderContact.name },
           { key: 'Metall', value: `${selectedMetal.name} – ${finish.name}` },
           { key: 'Stueckzahl', value: String(quantity) },
         ],
       });
-
-      // 3. Redirect to Shopify
       window.location.href = checkoutUrl;
     } catch (err) {
-      console.error('Order submission failed:', err);
-      toast.error('Fehler beim Senden – bitte erneut versuchen oder uns kontaktieren');
+      console.error(err);
+      toast.error('Shopify-Checkout fehlgeschlagen');
+    } finally {
       setOrderSubmitting(false);
     }
+  };
+
+  // Kept for the save-form variant (when orders are paused)
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!acceptingOrders) {
+      // Trigger the existing save-form path with all our validations
+      if (!selectedMetal || !selectedFinish || !quantity || images.length === 0) {
+        toast.error('Bitte füllen Sie alle Pflichtfelder aus');
+        return;
+      }
+      setShowSaveForm(true);
+      return;
+    }
+    // Active path: prefer PayPal (renders own button); user clicks Shopify CTA directly.
+    await handleShopifyCheckout();
   };
 
   const handleSaveRequest = async (e) => {
@@ -1094,22 +1128,59 @@ const Services = () => {
                         </div>
                       </div>
 
-                      <Button
-                        type="submit"
-                        disabled={orderSubmitting || !orderAgbAccepted || images.length === 0 || !quantity || !condition || !orderContact.name || !orderContact.email}
-                        className="w-full bg-[#2c7a7b] hover:bg-[#285e61] text-white py-6 text-base rounded-full transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-[#2c7a7b]/20"
-                        data-testid="submit-order-btn"
-                      >
-                        {orderSubmitting
-                          ? 'Wird gesendet…'
-                          : acceptingOrders
-                            ? 'Auftrag absenden & 49 € Einsende-Pauschale bezahlen'
-                            : 'Anfrage speichern'}
-                      </Button>
-                      {!orderSubmitting && acceptingOrders && (images.length === 0 || !quantity || !condition || !orderContact.name || !orderContact.email) && (
-                        <p className="text-xs text-slate-400 text-center -mt-2">
-                          Bitte alle Pflichtfelder ausfüllen und mindestens 1 Bild hochladen, um fortzufahren.
-                        </p>
+                      {/* Payment method picker (Save-form variant when paused) */}
+                      {!acceptingOrders ? (
+                        <Button
+                          type="submit"
+                          disabled={orderSubmitting}
+                          className="w-full bg-[#2c7a7b] hover:bg-[#285e61] text-white py-6 text-base rounded-full transition-all duration-300 disabled:opacity-50"
+                          data-testid="submit-order-btn"
+                        >
+                          {orderSubmitting ? 'Wird gesendet…' : 'Anfrage speichern'}
+                        </Button>
+                      ) : (
+                        <div className="space-y-4" data-testid="payment-block">
+                          <div className="flex items-center gap-3">
+                            <span className="text-xs font-semibold tracking-[0.15em] uppercase text-slate-500">Bezahlmethode wählen</span>
+                            <div className="flex-1 h-px bg-slate-200" />
+                          </div>
+
+                          {/* PayPal */}
+                          <div className="rounded-xl border border-slate-200 p-4 bg-white">
+                            <PayPalButton
+                              disabled={!orderAgbAccepted || images.length === 0 || !quantity || !condition || !orderContact.name || !orderContact.email}
+                              amount={49.0}
+                              onBeforeCreate={createBackendOrder}
+                              onSuccess={() => { toast.success('Vielen Dank für Ihre Bestellung!'); resetOrderForm(); }}
+                            />
+                            <p className="text-[11px] text-slate-400 text-center mt-2">Schnell, sicher & ohne Konto bezahlen</p>
+                          </div>
+
+                          {/* Divider */}
+                          <div className="flex items-center gap-3 py-1">
+                            <div className="flex-1 h-px bg-slate-200" />
+                            <span className="text-[10px] font-bold tracking-[0.2em] uppercase text-slate-400">oder</span>
+                            <div className="flex-1 h-px bg-slate-200" />
+                          </div>
+
+                          {/* Shopify (Karte / Klarna / Shop Pay) */}
+                          <Button
+                            type="button"
+                            onClick={handleShopifyCheckout}
+                            disabled={orderSubmitting || !orderAgbAccepted || images.length === 0 || !quantity || !condition || !orderContact.name || !orderContact.email}
+                            variant="outline"
+                            className="w-full border-2 border-slate-300 hover:border-[#2c7a7b] text-slate-700 py-5 text-sm rounded-full disabled:opacity-50"
+                            data-testid="shopify-checkout-btn"
+                          >
+                            {orderSubmitting ? 'Wird vorbereitet…' : 'Mit Karte / Klarna / Apple Pay bezahlen'}
+                          </Button>
+
+                          {(!orderAgbAccepted || images.length === 0 || !quantity || !condition || !orderContact.name || !orderContact.email) && (
+                            <p className="text-xs text-slate-400 text-center">
+                              Bitte alle Pflichtfelder ausfüllen und mindestens 1 Bild hochladen, um zu bezahlen.
+                            </p>
+                          )}
+                        </div>
                       )}
                     </form>
                     )}
