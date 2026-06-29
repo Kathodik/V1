@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import CoatingPreview from '../components/CoatingPreview';
 import LegalConsent from '../components/LegalConsent';
+import { createCheckoutUrl } from '../lib/shopifyCheckout';
 import axios from 'axios';
 
 /* ── Per-element realistic texture config ── */
@@ -391,7 +392,7 @@ const Services = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!selectedMetal || !selectedFinish || !quantity || images.length === 0) {
-      toast.error('Bitte füllen Sie alle Pflichtfelder aus');
+      toast.error('Bitte füllen Sie alle Pflichtfelder aus und laden Sie mindestens ein Bild hoch');
       return;
     }
     if (!condition) {
@@ -413,7 +414,8 @@ const Services = () => {
     const finish = selectedMetal.finishes.find(f => f.id === selectedFinish);
     setOrderSubmitting(true);
     try {
-      await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/configurator/order`, {
+      // 1. Save order to backend first (admin record + customer/admin emails)
+      const orderRes = await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/configurator/order`, {
         order_type: 'metal_order',
         name: orderContact.name,
         email: orderContact.email,
@@ -426,18 +428,25 @@ const Services = () => {
         condition: condition,
         images: images,
       });
-      toast.success(`Anfrage erfolgreich! Bestätigung per E-Mail unterwegs.`);
-      setSelectedMetal(null);
-      setOrderAgbAccepted(false);
-      setBaseMaterial('');
-      setCondition('');
-      setOrderContact({ name: '', email: '', phone: '' });
-      setQuantity('');
-      setDescription('');
-      setImages([]);
+      const orderId = orderRes.data.id;
+
+      // 2. Create Shopify checkout for the €49 Einsende-Pauschale
+      toast.info('Sie werden zur sicheren Zahlung weitergeleitet…');
+      const checkoutUrl = await createCheckoutUrl({
+        email: orderContact.email,
+        customAttributes: [
+          { key: 'Auftrags-ID', value: orderId },
+          { key: 'Kunde', value: orderContact.name },
+          { key: 'Metall', value: `${selectedMetal.name} – ${finish.name}` },
+          { key: 'Stueckzahl', value: String(quantity) },
+        ],
+      });
+
+      // 3. Redirect to Shopify
+      window.location.href = checkoutUrl;
     } catch (err) {
-      toast.error('Fehler beim Senden – bitte erneut versuchen');
-    } finally {
+      console.error('Order submission failed:', err);
+      toast.error('Fehler beim Senden – bitte erneut versuchen oder uns kontaktieren');
       setOrderSubmitting(false);
     }
   };
@@ -1065,9 +1074,43 @@ const Services = () => {
 
                       <LegalConsent checked={orderAgbAccepted} onCheckedChange={setOrderAgbAccepted} id="agb-order" />
 
-                      <Button type="submit" disabled={orderSubmitting} className="w-full bg-[#2c7a7b] hover:bg-[#285e61] text-white py-6 text-lg rounded-full transition-all duration-300 disabled:opacity-60" data-testid="submit-order-btn">
-                        {orderSubmitting ? 'Wird gesendet...' : (acceptingOrders ? 'Anfrage absenden' : 'Anfrage speichern')}
+                      {/* Einsende-Pauschale Info */}
+                      <div className="rounded-2xl border border-[#2c7a7b]/20 bg-gradient-to-br from-[#2c7a7b]/[0.04] to-white p-5 sm:p-6" data-testid="einsende-pauschale-info">
+                        <div className="flex items-start gap-3 mb-3">
+                          <div className="w-9 h-9 rounded-lg bg-[#2c7a7b]/10 flex items-center justify-center flex-shrink-0">
+                            <svg className="w-5 h-5 text-[#2c7a7b]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold tracking-[0.18em] uppercase text-[#2c7a7b] mb-1">Letzter Schritt – Einsende-Pauschale</p>
+                            <h4 className="text-base font-bold text-slate-800 mb-1.5 leading-snug">49&nbsp;€ Anzahlung &amp; Versand-Label inkl.</h4>
+                            <p className="text-sm text-slate-600 leading-relaxed">
+                              Mit der Bezahlung erhalten Sie automatisch ein <span className="font-semibold">vorfrankiertes Sendcloud-Versandlabel</span> per E-Mail.
+                              Die 49&nbsp;€ werden in der finalen Rechnung verrechnet (Anzahlung).
+                              Nach Erhalt entscheiden wir final über die Auftragsannahme.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <Button
+                        type="submit"
+                        disabled={orderSubmitting || !orderAgbAccepted || images.length === 0 || !quantity || !condition || !orderContact.name || !orderContact.email}
+                        className="w-full bg-[#2c7a7b] hover:bg-[#285e61] text-white py-6 text-base rounded-full transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-[#2c7a7b]/20"
+                        data-testid="submit-order-btn"
+                      >
+                        {orderSubmitting
+                          ? 'Wird gesendet…'
+                          : acceptingOrders
+                            ? 'Auftrag absenden & 49 € Einsende-Pauschale bezahlen'
+                            : 'Anfrage speichern'}
                       </Button>
+                      {!orderSubmitting && acceptingOrders && (images.length === 0 || !quantity || !condition || !orderContact.name || !orderContact.email) && (
+                        <p className="text-xs text-slate-400 text-center -mt-2">
+                          Bitte alle Pflichtfelder ausfüllen und mindestens 1 Bild hochladen, um fortzufahren.
+                        </p>
+                      )}
                     </form>
                     )}
                   </CardContent>

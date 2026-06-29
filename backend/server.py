@@ -838,6 +838,10 @@ async def create_configurator_order(request: ConfiguratorOrderRequest):
         "has_reference_image": request.reference_image is not None,
         "image_count": len(request.images) if request.images else 0,
         "status": "new",
+        "payment_status": "pending" if request.order_type == "metal_order" else "not_applicable",
+        "payment_amount_eur": 49 if request.order_type == "metal_order" else 0,
+        "shopify_checkout_id": None,
+        "shopify_order_id": None,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     

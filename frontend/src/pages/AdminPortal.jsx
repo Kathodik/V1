@@ -349,22 +349,34 @@ const AdminPortal = () => {
                     </Card>
                   ) : (
                     configuratorOrders.map((order, i) => {
-                      const typeLabels = { upload: 'Eigene Datei', partner_model: 'Partner-Modellierung', ai_generate: 'Luigi – KI-Konzept', mobile_service: 'Mobile Dienstleistung' };
-                      const typeColors = { upload: 'bg-blue-100 text-blue-700', partner_model: 'bg-purple-100 text-purple-700', ai_generate: 'bg-teal-100 text-teal-700', mobile_service: 'bg-amber-100 text-amber-700' };
+                      const typeLabels = { upload: 'Eigene Datei', partner_model: 'Partner-Modellierung', ai_generate: 'Luigi – KI-Konzept', mobile_service: 'Mobile Dienstleistung', metal_order: 'Metall-Auftrag' };
+                      const typeColors = { upload: 'bg-blue-100 text-blue-700', partner_model: 'bg-purple-100 text-purple-700', ai_generate: 'bg-teal-100 text-teal-700', mobile_service: 'bg-amber-100 text-amber-700', metal_order: 'bg-emerald-100 text-emerald-700' };
+                      const isMetalOrder = order.order_type === 'metal_order';
+                      const paymentPaid = order.payment_status === 'paid';
+                      const paymentPending = order.payment_status === 'pending';
                       return (
                         <Card key={i} className="bg-white border-slate-200">
                           <CardContent className="p-4">
                             <div className="flex items-start justify-between">
                               <div>
-                                <div className="flex items-center space-x-2 mb-1">
+                                <div className="flex items-center space-x-2 mb-1 flex-wrap gap-y-1">
                                   <p className="font-semibold text-slate-800">{order.name}</p>
                                   <Badge className={`text-xs ${typeColors[order.order_type] || 'bg-slate-100 text-slate-700'}`}>
                                     {typeLabels[order.order_type] || order.order_type}
                                   </Badge>
+                                  {isMetalOrder && paymentPaid && (
+                                    <Badge className="bg-green-100 text-green-700 text-xs">💳 49 € bezahlt</Badge>
+                                  )}
+                                  {isMetalOrder && paymentPending && (
+                                    <Badge className="bg-orange-100 text-orange-700 text-xs">💳 Zahlung offen</Badge>
+                                  )}
                                 </div>
                                 <p className="text-sm text-slate-500">{order.email} {order.phone ? `| ${order.phone}` : ''}</p>
-                                {order.metal && <p className="text-sm text-[#2c7a7b] mt-1">Metall: {order.metal} {order.finish ? `- ${order.finish}` : ''}</p>}
+                                {order.metal && <p className="text-sm text-[#2c7a7b] mt-1">Metall: {order.metal} {order.finish ? `- ${order.finish}` : ''} {order.quantity ? `· ${order.quantity} Stk` : ''}</p>}
+                                {order.base_material && <p className="text-xs text-slate-500 mt-0.5">Grundmaterial: {order.base_material}</p>}
+                                {order.condition && <p className="text-xs text-slate-500 mt-0.5">Zustand: {order.condition === 'neu' ? '🟢 Stufe 1 – Neu' : order.condition === 'leicht' ? '🟡 Stufe 2 – Leicht oxidiert' : '🔴 Stufe 3 – Starker Rost'}</p>}
                                 {order.description && <p className="text-sm text-slate-600 mt-1">{order.description}</p>}
+                                {order.image_count > 0 && <p className="text-xs text-blue-600 mt-1">📷 {order.image_count} Bauteilfoto(s)</p>}
                                 {order.file_name && <p className="text-sm text-blue-600 mt-1">Datei: {order.file_name}</p>}
                               </div>
                               <div className="text-right">
