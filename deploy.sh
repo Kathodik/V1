@@ -66,12 +66,14 @@ fi
 # 3. Backend-Abhängigkeiten aktualisieren
 # ---------------------------------------------------------------
 echo "==> Aktualisiere Backend-Abhängigkeiten"
+# emergentintegrations liegt nicht auf PyPI, sondern im Emergent-eigenen Index
+PIP_ARGS="--extra-index-url https://d33sy5i8bnduwe.cloudfront.net/simple/"
 if [ -f backend/venv/bin/pip ]; then
-  backend/venv/bin/pip install -r backend/requirements.txt --quiet
+  backend/venv/bin/pip install -r backend/requirements.txt $PIP_ARGS --quiet
 elif [ -f venv/bin/pip ]; then
-  venv/bin/pip install -r backend/requirements.txt --quiet
+  venv/bin/pip install -r backend/requirements.txt $PIP_ARGS --quiet
 else
-  pip3 install -r backend/requirements.txt --quiet
+  pip3 install -r backend/requirements.txt $PIP_ARGS --quiet
 fi
 
 # ---------------------------------------------------------------
