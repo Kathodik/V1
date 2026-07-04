@@ -49,7 +49,9 @@ if command -v yarn >/dev/null 2>&1; then
   yarn install
   yarn build
 else
-  npm install
+  npm install --legacy-peer-deps --no-audit --no-fund
+  # npm hoistet ajv@6, react-scripts 5 braucht aber ajv@8 zur Build-Zeit
+  npm install --no-save --legacy-peer-deps --no-audit --no-fund ajv@^8
   npm run build
 fi
 cd "$APP_DIR"
