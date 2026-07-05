@@ -382,12 +382,36 @@ const Services = () => {
     setTimeout(() => detailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
   };
 
-  const handleImageUpload = (e) => {
+  // Verkleinert ein Bild clientseitig und liefert eine data-URL, damit echte
+  // Bilddaten (statt flüchtiger blob:-Verweise) an das Backend gehen.
+  const downscaleImage = (file, maxDim = 1600, quality = 0.82) => new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Bild konnte nicht gelesen werden')); };
+    img.src = url;
+  });
+
+  const handleImageUpload = async (e) => {
     const files = Array.from(e.target.files);
+    e.target.value = '';
     if (files.length + images.length > 5) { toast.error('Maximal 5 Bilder erlaubt'); return; }
-    const newImages = files.map(file => URL.createObjectURL(file));
-    setImages([...images, ...newImages]);
-    toast.success(`${files.length} Bild(er) hinzugefügt`);
+    try {
+      const newImages = await Promise.all(files.map((file) => downscaleImage(file)));
+      setImages((prev) => [...prev, ...newImages]);
+      toast.success(`${files.length} Bild(er) hinzugefügt`);
+    } catch (err) {
+      console.error('Image processing failed:', err);
+      toast.error('Bild konnte nicht verarbeitet werden');
+    }
   };
 
   // Validates form and creates the backend order. Returns the created order data or null on failure.
