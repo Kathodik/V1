@@ -7,7 +7,7 @@ import { Textarea } from '../components/ui/textarea';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
 import { Checkbox } from '../components/ui/checkbox';
-import { Upload, Package, Ruler, Info, PauseCircle, Bell, Save } from 'lucide-react';
+import { Upload, Package, Ruler, Info, PauseCircle, Bell, Save, Layers, MapPin, Boxes, ArrowRight } from 'lucide-react';
 import { AnimateOnScroll } from '../components/AnimateOnScroll';
 import { useParallax } from '../hooks/useScrollAnimation';
 import { metals, companyInfo } from '../data/mockData';
@@ -558,25 +558,104 @@ const Services = () => {
           <AnimateOnScroll variant="fadeUp" duration="slow">
             <div className="text-center">
               <p className="text-sm font-semibold tracking-[0.2em] uppercase text-[#2c7a7b] mb-4">
-                Periodensystem der Galvanisierung
+                Kathodik Galvanotechnik
               </p>
               <h1
                 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-slate-800 mb-4"
                 data-testid="services-heading"
               >
-                Wählen Sie Ihr Metall
+                Unsere Leistungen
               </h1>
-              <p className="text-lg text-slate-500 max-w-xl mx-auto">
-                12 Metalle in echter metallischer Optik – bewegen Sie die Maus über die Elemente
+              <p className="text-lg text-slate-500 max-w-2xl mx-auto">
+                Lohngalvanisierung, Vor-Ort-Galvanik und der KI-gestützte 3D-Konfigurator –
+                drei Wege zu Ihrer perfekten Oberfläche.
               </p>
             </div>
           </AnimateOnScroll>
         </div>
       </section>
 
-      {/* Periodic Table */}
-      <section className="pb-12 relative">
+      {/* Leistungs-Übersicht */}
+      <section className="pb-16" data-testid="services-overview">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[
+              {
+                id: 'lohngalvanik',
+                icon: Layers,
+                title: 'Lohngalvanisierung',
+                desc: 'Einsenden, veredeln, zurückerhalten: 12 Metalle vom Zink bis zum Rhodium – konfigurieren Sie Ihre Beschichtung direkt online.',
+                cta: 'Metall wählen',
+                testid: 'overview-lohngalvanik',
+              },
+              {
+                id: 'vor-ort-galvanik',
+                icon: MapPin,
+                title: 'Vor-Ort-Galvanik',
+                desc: 'Selektive Galvanisierung bei Ihnen vor Ort: Reparatur und Veredelung an Ort und Stelle – ohne Einsenden, ohne Demontage.',
+                cta: 'Mehr erfahren',
+                testid: 'overview-vor-ort',
+              },
+              {
+                to: '/3d-configurator',
+                icon: Boxes,
+                title: '3D-Konfigurator',
+                desc: 'Beschreiben Sie Ihr Wunschteil – unsere KI erstellt das 3D-Modell, wir kümmern uns um Fertigung und Veredelung.',
+                cta: 'Konfigurator öffnen',
+                testid: 'overview-3d',
+              },
+            ].map((s, i) => {
+              const Icon = s.icon;
+              const inner = (
+                <Card className="h-full border border-slate-200 hover:border-[#2c7a7b]/50 hover:shadow-lg transition-all duration-300 group cursor-pointer">
+                  <CardContent className="p-7 flex flex-col h-full">
+                    <div className="w-12 h-12 rounded-xl bg-[#2c7a7b]/10 flex items-center justify-center mb-5 group-hover:bg-[#2c7a7b]/15 transition-colors">
+                      <Icon className="w-6 h-6 text-[#2c7a7b]" />
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-800 mb-2">{s.title}</h3>
+                    <p className="text-sm text-slate-600 leading-relaxed flex-1">{s.desc}</p>
+                    <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#2c7a7b] mt-5 group-hover:gap-2.5 transition-all">
+                      {s.cta} <ArrowRight className="w-4 h-4" />
+                    </span>
+                  </CardContent>
+                </Card>
+              );
+              return (
+                <AnimateOnScroll key={s.title} variant="fadeUp" duration="slow" delay={i * 100}>
+                  {s.to ? (
+                    <Link to={s.to} className="block h-full" data-testid={s.testid}>{inner}</Link>
+                  ) : (
+                    <div
+                      className="h-full"
+                      data-testid={s.testid}
+                      onClick={() => document.getElementById(s.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                    >
+                      {inner}
+                    </div>
+                  )}
+                </AnimateOnScroll>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* Periodic Table */}
+      <section id="lohngalvanik" className="pb-12 relative scroll-mt-24">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <AnimateOnScroll variant="fadeUp" duration="slow">
+            <div className="text-center mb-10">
+              <p className="text-sm font-semibold tracking-[0.2em] uppercase text-[#2c7a7b] mb-3">
+                Lohngalvanisierung · Periodensystem der Galvanisierung
+              </p>
+              <h2 className="text-3xl sm:text-4xl font-bold text-slate-800 mb-3">
+                Wählen Sie Ihr Metall
+              </h2>
+              <p className="text-slate-500 max-w-xl mx-auto">
+                12 Metalle in echter metallischer Optik – bewegen Sie die Maus über die Elemente
+              </p>
+            </div>
+          </AnimateOnScroll>
           <div className="max-w-5xl mx-auto" data-testid="periodic-table">
             {/* Period 4 */}
             <AnimateOnScroll variant="fadeUp" duration="slow">
@@ -691,7 +770,7 @@ const Services = () => {
       </section>
 
       {/* Mobile Dienstleistung Section */}
-      <section className="pb-20">
+      <section id="vor-ort-galvanik" className="pb-20 scroll-mt-24">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-6xl mx-auto">
             <AnimateOnScroll variant="fadeUp" duration="slow">
@@ -703,17 +782,18 @@ const Services = () => {
                         Neu: Vor-Ort-Service
                       </div>
                       <h3 className="text-2xl font-bold text-slate-800 mb-4">
-                        Mobile Dienstleistung
+                        Vor-Ort-Galvanik
                       </h3>
                       <p className="text-slate-600 mb-6 leading-relaxed">
-                        Auftragsabwicklung direkt bei Ihnen vor Ort. Ideal für nicht demontierbare Teile, 
-                        ohne Ausfallzeiten durch Einsendung.
+                        Selektive Galvanisierung direkt bei Ihnen vor Ort: Wir reparieren und
+                        veredeln Oberflächen an Ort und Stelle – ganz ohne Einsenden und ohne
+                        Demontage. Ideal für festverbaute, große oder empfindliche Teile.
                       </p>
                       <div className="space-y-3 mb-6">
                         {[
-                          'Oberflächenreparatur an Anlagen & Maschinen',
-                          'Beschichtungsarbeiten an Kaminen & Einbauten',
-                          'Keine Demontage nötig – kein Produktionsstillstand',
+                          'Selektive Beschichtung – Metallauftrag exakt dort, wo er gebraucht wird',
+                          'Reparatur von Verschleiß- und Korrosionsstellen an Anlagen & Maschinen',
+                          'Veredelung ohne Demontage – kein Produktionsstillstand, kein Versandrisiko',
                           'Flexible Terminplanung nach Ihren Bedürfnissen'
                         ].map((item, i) => (
                           <div key={i} className="flex items-start space-x-3">
