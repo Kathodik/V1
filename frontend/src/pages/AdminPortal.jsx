@@ -30,6 +30,21 @@ const AdminPortal = () => {
   const [loading, setLoading] = useState(false);
   const [pricing, setPricing] = useState(null);
   const [savingPricing, setSavingPricing] = useState(false);
+  const [orderFiles, setOrderFiles] = useState({});
+
+  const loadOrderFiles = async (orderId) => {
+    if (orderFiles[orderId]) {
+      setOrderFiles((prev) => { const n = { ...prev }; delete n[orderId]; return n; });
+      return;
+    }
+    try {
+      const headers = { Authorization: `Bearer ${token}` };
+      const res = await axios.get(`${API}/configurator/orders/${orderId}/files`, { headers });
+      setOrderFiles((prev) => ({ ...prev, [orderId]: res.data.files || [] }));
+    } catch (error) {
+      toast.error('Bilder konnten nicht geladen werden');
+    }
+  };
 
   useEffect(() => {
     if (!user || !user.is_admin) {
@@ -506,11 +521,13 @@ const AdminPortal = () => {
                     </Card>
                   ) : (
                     configuratorOrders.map((order, i) => {
-                      const typeLabels = { upload: 'Eigene Datei', partner_model: 'Partner-Modellierung', ai_generate: 'Luigi – KI-Konzept', mobile_service: 'Mobile Dienstleistung', metal_order: 'Metall-Auftrag' };
-                      const typeColors = { upload: 'bg-blue-100 text-blue-700', partner_model: 'bg-purple-100 text-purple-700', ai_generate: 'bg-teal-100 text-teal-700', mobile_service: 'bg-amber-100 text-amber-700', metal_order: 'bg-emerald-100 text-emerald-700' };
-                      const isMetalOrder = order.order_type === 'metal_order';
+                      const typeLabels = { upload: 'Eigene Datei', partner_model: 'Partner-Modellierung', ai_generate: 'Luigi – KI-Konzept', mobile_service: 'Mobile Dienstleistung', metal_order: 'Metall-Auftrag', cart_order: 'Warenkorb-Bestellung' };
+                      const typeColors = { upload: 'bg-blue-100 text-blue-700', partner_model: 'bg-purple-100 text-purple-700', ai_generate: 'bg-teal-100 text-teal-700', mobile_service: 'bg-amber-100 text-amber-700', metal_order: 'bg-emerald-100 text-emerald-700', cart_order: 'bg-emerald-100 text-emerald-700' };
+                      const isMetalOrder = order.order_type === 'metal_order' || order.order_type === 'cart_order';
+                      const paymentAmount = order.payment_amount_eur || 49;
                       const paymentPaid = order.payment_status === 'paid';
                       const paymentPending = order.payment_status === 'pending';
+                      const files = orderFiles[order.id];
                       return (
                         <Card key={i} className="bg-white border-slate-200">
                           <CardContent className="p-4">
@@ -522,10 +539,10 @@ const AdminPortal = () => {
                                     {typeLabels[order.order_type] || order.order_type}
                                   </Badge>
                                   {isMetalOrder && paymentPaid && (
-                                    <Badge className="bg-green-100 text-green-700 text-xs">💳 49 € bezahlt</Badge>
+                                    <Badge className="bg-green-100 text-green-700 text-xs">💳 {paymentAmount.toFixed(2).replace('.', ',')} € bezahlt</Badge>
                                   )}
                                   {isMetalOrder && paymentPending && (
-                                    <Badge className="bg-orange-100 text-orange-700 text-xs">💳 Zahlung offen</Badge>
+                                    <Badge className="bg-orange-100 text-orange-700 text-xs">💳 {paymentAmount.toFixed(2).replace('.', ',')} € offen</Badge>
                                   )}
                                 </div>
                                 <p className="text-sm text-slate-500">{order.email} {order.phone ? `| ${order.phone}` : ''}</p>
@@ -533,7 +550,41 @@ const AdminPortal = () => {
                                 {order.base_material && <p className="text-xs text-slate-500 mt-0.5">Grundmaterial: {order.base_material}</p>}
                                 {order.condition && <p className="text-xs text-slate-500 mt-0.5">Zustand: {order.condition === 'neu' ? '🟢 Stufe 1 – Neu' : order.condition === 'leicht' ? '🟡 Stufe 2 – Leicht oxidiert' : '🔴 Stufe 3 – Starker Rost'}</p>}
                                 {order.description && <p className="text-sm text-slate-600 mt-1">{order.description}</p>}
-                                {order.image_count > 0 && <p className="text-xs text-blue-600 mt-1">📷 {order.image_count} Bauteilfoto(s)</p>}
+                                {order.items && order.items.length > 0 && (
+                                  <div className="mt-2 text-sm text-slate-600 space-y-0.5">
+                                    {order.items.map((it, idx) => (
+                                      <p key={idx}>
+                                        {it.quantity}× {it.product_name} · {it.metal}{it.finish ? ` (${it.finish})` : ''} — {Number(it.line_total_eur).toFixed(2).replace('.', ',')} €
+                                      </p>
+                                    ))}
+                                  </div>
+                                )}
+                                {order.image_count > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => loadOrderFiles(order.id)}
+                                    className="text-xs text-blue-600 mt-1 underline underline-offset-2"
+                                    data-testid={`show-images-${order.id}`}
+                                  >
+                                    📷 {order.image_count} Bauteilfoto(s) {files ? 'ausblenden' : 'anzeigen'}
+                                  </button>
+                                )}
+                                {files && files.length > 0 && (
+                                  <div className="flex flex-wrap gap-2 mt-2">
+                                    {files.map((f, idx) => (
+                                      <a key={idx} href={f.file_data} target="_blank" rel="noreferrer" title={f.file_name}>
+                                        <img
+                                          src={f.file_data}
+                                          alt={f.file_name}
+                                          className="w-20 h-20 object-cover rounded-lg border border-slate-200 hover:border-[#2c7a7b]"
+                                        />
+                                      </a>
+                                    ))}
+                                  </div>
+                                )}
+                                {files && files.length === 0 && (
+                                  <p className="text-xs text-slate-400 mt-1">Keine Bilddaten gespeichert (Auftrag vor dem Bilder-Fix erstellt)</p>
+                                )}
                                 {order.file_name && <p className="text-sm text-blue-600 mt-1">Datei: {order.file_name}</p>}
                               </div>
                               <div className="text-right">
