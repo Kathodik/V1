@@ -655,6 +655,134 @@ async def update_accepting_orders(update: SettingsUpdate, current_user: User = D
     
     return SettingsResponse(accepting_orders=update.accepting_orders, pause_message=update.pause_message)
 
+# ─── Pricing & Warenkorb (Pauschalpreise je Produkt × Metallfaktor) ───
+DEFAULT_PRICING = {
+    "key": "pricing",
+    "cart_enabled": False,
+    "products": [
+        {"id": "ring", "name": "Ring", "base_price_eur": 29.0, "active": True},
+        {"id": "kette", "name": "Kette", "base_price_eur": 59.0, "active": True},
+        {"id": "armband", "name": "Armband", "base_price_eur": 49.0, "active": True},
+        {"id": "uhr", "name": "Uhrengehäuse", "base_price_eur": 89.0, "active": True},
+        {"id": "muenze", "name": "Münze / Medaille", "base_price_eur": 24.0, "active": True},
+        {"id": "brille", "name": "Brillengestell", "base_price_eur": 69.0, "active": True},
+        {"id": "besteck", "name": "Besteckteil", "base_price_eur": 39.0, "active": True},
+    ],
+    "metal_factors": {
+        "Zn": 1.0, "Sn": 1.1, "Cu": 1.2, "Ni": 1.3, "Co": 1.4, "WB": 1.5,
+        "Cr": 1.6, "Ag": 1.8, "Ru": 2.5, "Pd": 3.0, "Au": 4.0, "Pt": 4.5, "Rh": 5.0,
+    },
+}
+
+async def _get_pricing():
+    doc = await db.settings.find_one({"key": "pricing"}, {"_id": 0})
+    return doc or DEFAULT_PRICING
+
+class PricingUpdate(BaseModel):
+    cart_enabled: bool
+    products: List[dict]
+    metal_factors: dict
+
+@api_router.get("/pricing")
+async def get_pricing():
+    """Public pricing config for the cart order flow"""
+    return await _get_pricing()
+
+@api_router.put("/pricing")
+async def update_pricing(update: PricingUpdate, current_user: User = Depends(get_current_user)):
+    """Update pricing config (admin only)"""
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    for p in update.products:
+        if not p.get("id") or not p.get("name"):
+            raise HTTPException(status_code=400, detail="Produkt braucht id und name")
+        try:
+            p["base_price_eur"] = round(float(p.get("base_price_eur", 0)), 2)
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=400, detail=f"Ungültiger Basispreis bei {p.get('name')}")
+        if p["base_price_eur"] < 0:
+            raise HTTPException(status_code=400, detail=f"Negativer Basispreis bei {p.get('name')}")
+        p["active"] = bool(p.get("active", True))
+    factors = {}
+    for sym, f in update.metal_factors.items():
+        try:
+            factors[sym] = round(float(f), 2)
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=400, detail=f"Ungültiger Faktor für {sym}")
+        if factors[sym] <= 0:
+            raise HTTPException(status_code=400, detail=f"Faktor für {sym} muss > 0 sein")
+    doc = {
+        "key": "pricing",
+        "cart_enabled": update.cart_enabled,
+        "products": update.products,
+        "metal_factors": factors,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "updated_by": current_user.email,
+    }
+    await db.settings.update_one({"key": "pricing"}, {"$set": doc}, upsert=True)
+    return await _get_pricing()
+
+class CartItemRequest(BaseModel):
+    product_id: str
+    metal: str          # Metall-Symbol, z. B. "Au"
+    finish: Optional[str] = None
+    quantity: int = Field(ge=1, le=500)
+
+class CartOrderRequest(BaseModel):
+    name: str
+    email: EmailStr
+    phone: Optional[str] = None
+    note: Optional[str] = None
+    items: List[CartItemRequest] = Field(min_length=1, max_length=30)
+
+@api_router.post("/cart/order")
+async def create_cart_order(request: CartOrderRequest):
+    """Create a cart order; total is computed server-side from the pricing config."""
+    pricing = await _get_pricing()
+    products = {p["id"]: p for p in pricing.get("products", []) if p.get("active", True)}
+    factors = pricing.get("metal_factors", {})
+
+    lines = []
+    total = 0.0
+    for item in request.items:
+        product = products.get(item.product_id)
+        if not product:
+            raise HTTPException(status_code=400, detail=f"Unbekanntes Produkt: {item.product_id}")
+        factor = factors.get(item.metal)
+        if not factor:
+            raise HTTPException(status_code=400, detail=f"Unbekanntes Metall: {item.metal}")
+        unit = round(product["base_price_eur"] * factor, 2)
+        line_total = round(unit * item.quantity, 2)
+        total = round(total + line_total, 2)
+        lines.append({
+            "product_id": item.product_id,
+            "product_name": product["name"],
+            "metal": item.metal,
+            "finish": item.finish,
+            "quantity": item.quantity,
+            "unit_price_eur": unit,
+            "line_total_eur": line_total,
+        })
+    if total <= 0:
+        raise HTTPException(status_code=400, detail="Gesamtsumme muss größer als 0 sein")
+
+    order_id = str(uuid.uuid4())
+    doc = {
+        "id": order_id,
+        "order_type": "cart_order",
+        "name": request.name,
+        "email": request.email,
+        "phone": request.phone,
+        "description": request.note,
+        "items": lines,
+        "status": "new",
+        "payment_status": "pending",
+        "payment_amount_eur": total,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.configurator_orders.insert_one(doc)
+    return {"id": order_id, "total_eur": total, "items": lines}
+
 # ─── Waitlist Endpoints (Notification Signup) ───
 class WaitlistEntry(BaseModel):
     email: EmailStr
@@ -1115,14 +1243,23 @@ class PayPalCreateOrderRequest(BaseModel):
 
 @api_router.post("/paypal/orders")
 async def paypal_create_order(req: PayPalCreateOrderRequest):
-    """Create a PayPal order for the €49 Einsende-Pauschale."""
+    """Create a PayPal order. The amount is taken from the linked internal order
+    (server-side computed) when available, so clients cannot tamper with it."""
     import httpx
+    amount = req.amount_eur
+    description = "Kathodik - Einsende-Pauschale & Versand-Label"
+    if req.internal_order_id:
+        internal = await db.configurator_orders.find_one({"id": req.internal_order_id}, {"_id": 0})
+        if internal and internal.get("payment_amount_eur", 0) > 0:
+            amount = float(internal["payment_amount_eur"])
+            if internal.get("order_type") == "cart_order":
+                description = "Kathodik - Galvanisierungsauftrag (Warenkorb)"
     token = await _paypal_access_token()
     payload = {
         "intent": "CAPTURE",
         "purchase_units": [{
-            "amount": {"currency_code": "EUR", "value": f"{req.amount_eur:.2f}"},
-            "description": "Kathodik - Einsende-Pauschale & Versand-Label",
+            "amount": {"currency_code": "EUR", "value": f"{amount:.2f}"},
+            "description": description,
             "custom_id": req.internal_order_id or "",
         }],
         "application_context": {

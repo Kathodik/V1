@@ -1,14 +1,34 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, LogIn } from 'lucide-react';
+import { Menu, X, LogIn, ShoppingCart } from 'lucide-react';
 import { Button } from './ui/button';
 import { useAuth } from '../contexts/AuthContext';
+import { useCart } from '../contexts/CartContext';
 
 const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
   const { user } = useAuth();
+  const { cartEnabled, count, setIsOpen } = useCart();
+
+  const CartButton = ({ className = '' }) => (
+    cartEnabled ? (
+      <button
+        onClick={() => setIsOpen(true)}
+        className={`relative p-2 rounded-full text-slate-600 hover:text-[#2c7a7b] hover:bg-slate-100/80 transition-colors ${className}`}
+        aria-label="Warenkorb öffnen"
+        data-testid="cart-open-btn"
+      >
+        <ShoppingCart className="h-5 w-5" />
+        {count > 0 && (
+          <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-[#2c7a7b] text-white text-[10px] font-bold flex items-center justify-center" data-testid="cart-count">
+            {count}
+          </span>
+        )}
+      </button>
+    ) : null
+  );
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -66,6 +86,7 @@ const Header = () => {
                 {item.name}
               </Link>
             ))}
+            <CartButton className="ml-1" />
             <Link to={user ? '/portal' : '/portal/login'}>
               <Button
                 size="sm"
@@ -85,6 +106,8 @@ const Header = () => {
           </div>
 
           {/* Mobile menu button */}
+          <div className="lg:hidden flex items-center gap-1">
+          <CartButton />
           <Button
             variant="ghost"
             size="icon"
@@ -94,6 +117,7 @@ const Header = () => {
           >
             {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </Button>
+          </div>
         </div>
 
         {/* Mobile Navigation */}

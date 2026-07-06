@@ -7,7 +7,7 @@ import { Textarea } from '../components/ui/textarea';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
 import { Checkbox } from '../components/ui/checkbox';
-import { Upload, Package, Ruler, Info, PauseCircle, Bell, Save, Layers, MapPin, Boxes, ArrowRight } from 'lucide-react';
+import { Upload, Package, Ruler, Info, PauseCircle, Bell, Save, Layers, MapPin, Boxes, ArrowRight, ShoppingCart, Minus, Plus } from 'lucide-react';
 import { AnimateOnScroll } from '../components/AnimateOnScroll';
 import { useParallax } from '../hooks/useScrollAnimation';
 import { metals, companyInfo } from '../data/mockData';
@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import CoatingPreview from '../components/CoatingPreview';
 import LegalConsent from '../components/LegalConsent';
+import { useCart } from '../contexts/CartContext';
 import PayPalButton from '../components/PayPalButton';
 import { createCheckoutUrl } from '../lib/shopifyCheckout';
 import axios from 'axios';
@@ -359,6 +360,10 @@ const Services = () => {
   const [condition, setCondition] = useState('');
   const [orderContact, setOrderContact] = useState({ name: '', email: '', phone: '' });
   const [orderSubmitting, setOrderSubmitting] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [cartQty, setCartQty] = useState(1);
+  const [showClassicForm, setShowClassicForm] = useState(false);
+  const { cartEnabled, products: cartProducts, unitPrice, addItem, setIsOpen: setCartOpen } = useCart();
   const scrollY = useParallax();
   const detailRef = useRef(null);
 
@@ -379,7 +384,25 @@ const Services = () => {
     setImages([]);
     setBaseMaterial('');
     setCondition('');
+    setSelectedProduct(null);
+    setCartQty(1);
+    setShowClassicForm(false);
     setTimeout(() => detailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+  };
+
+  const handleAddToCart = () => {
+    if (!selectedProduct) { toast.error('Bitte wählen Sie ein Produkt'); return; }
+    const finish = selectedMetal.finishes.find(f => f.id === selectedFinish);
+    addItem({
+      product_id: selectedProduct,
+      metal: selectedMetal.symbol,
+      metal_name: selectedMetal.name,
+      finish: selectedFinish,
+      finish_name: finish?.name,
+      quantity: cartQty,
+    });
+    toast.success('Zum Warenkorb hinzugefügt');
+    setCartOpen(true);
   };
 
   // Verkleinert ein Bild clientseitig und liefert eine data-URL, damit echte
@@ -1048,7 +1071,7 @@ const Services = () => {
                     )}
 
                     <h3 className="text-2xl font-bold text-slate-800 mb-6">
-                      {acceptingOrders ? 'Anfrage stellen' : 'Anfrage speichern'}
+                      {!acceptingOrders ? 'Anfrage speichern' : (cartEnabled && !showClassicForm ? 'Preis kalkulieren' : 'Anfrage stellen')}
                     </h3>
 
                     {/* Save Form (when paused and user submits) */}
@@ -1084,6 +1107,115 @@ const Services = () => {
                           Zurück
                         </Button>
                       </form>
+                    ) : cartEnabled && acceptingOrders && !showClassicForm ? (
+                    <div className="space-y-6" data-testid="cart-order-panel">
+                      {selectedMetal.finishes.length > 1 && (
+                        <div>
+                          <Label className="text-slate-800 mb-2 block font-semibold">Ausführung</Label>
+                          <div className="flex flex-wrap gap-2">
+                            {selectedMetal.finishes.map((f) => (
+                              <button
+                                key={f.id}
+                                type="button"
+                                onClick={() => setSelectedFinish(f.id)}
+                                className={`px-4 py-2 rounded-full text-sm border-2 transition-colors ${
+                                  selectedFinish === f.id
+                                    ? 'border-[#2c7a7b] bg-[#2c7a7b]/5 text-[#2c7a7b] font-semibold'
+                                    : 'border-slate-200 text-slate-600 hover:border-slate-300'
+                                }`}
+                                data-testid={`cart-finish-${f.id}`}
+                              >
+                                {f.name}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <div>
+                        <Label className="text-slate-800 mb-2 block font-semibold">Produkt wählen *</Label>
+                        <div className="grid grid-cols-2 gap-3">
+                          {cartProducts.map((p) => {
+                            const price = unitPrice(p.id, selectedMetal.symbol);
+                            return (
+                              <button
+                                key={p.id}
+                                type="button"
+                                onClick={() => setSelectedProduct(p.id)}
+                                className={`text-left p-4 rounded-xl border-2 transition-all duration-200 ${
+                                  selectedProduct === p.id
+                                    ? 'border-[#2c7a7b] bg-[#2c7a7b]/5 shadow-sm'
+                                    : 'border-slate-200 bg-white hover:border-slate-300'
+                                }`}
+                                data-testid={`cart-product-${p.id}`}
+                              >
+                                <p className="text-sm font-semibold text-slate-800 mb-1">{p.name}</p>
+                                <p className="text-xs text-slate-500">
+                                  {price != null ? `${price.toFixed(2).replace('.', ',')} € / Stück` : '–'}
+                                </p>
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <p className="text-xs text-slate-400 mt-2">
+                          Pauschalpreis je Produktkategorie · Metall {selectedMetal.name} bereits eingerechnet
+                        </p>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <Label className="text-slate-800 font-semibold">Stückzahl</Label>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            className="w-9 h-9 rounded-full border border-slate-200 flex items-center justify-center hover:border-[#2c7a7b] text-slate-600"
+                            onClick={() => setCartQty(Math.max(1, cartQty - 1))}
+                            data-testid="cart-qty-minus"
+                          >
+                            <Minus className="w-4 h-4" />
+                          </button>
+                          <span className="w-10 text-center text-lg font-bold text-slate-800" data-testid="cart-qty">{cartQty}</span>
+                          <button
+                            type="button"
+                            className="w-9 h-9 rounded-full border border-slate-200 flex items-center justify-center hover:border-[#2c7a7b] text-slate-600"
+                            onClick={() => setCartQty(Math.min(500, cartQty + 1))}
+                            data-testid="cart-qty-plus"
+                          >
+                            <Plus className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between p-5 rounded-2xl border border-[#2c7a7b]/20 bg-gradient-to-r from-[#2c7a7b]/[0.05] to-white">
+                        <span className="text-sm font-semibold text-slate-600">Ihr Preis</span>
+                        <span className="text-2xl font-bold text-slate-800" data-testid="cart-live-price">
+                          {selectedProduct && unitPrice(selectedProduct, selectedMetal.symbol) != null
+                            ? `${(unitPrice(selectedProduct, selectedMetal.symbol) * cartQty).toFixed(2).replace('.', ',')} €`
+                            : '– €'}
+                        </span>
+                      </div>
+
+                      <Button
+                        type="button"
+                        onClick={handleAddToCart}
+                        disabled={!selectedProduct}
+                        className="w-full bg-[#2c7a7b] hover:bg-[#285e61] text-white py-6 text-base rounded-full disabled:opacity-50"
+                        data-testid="cart-add-btn"
+                      >
+                        <ShoppingCart className="h-5 w-5 mr-2" /> In den Warenkorb
+                      </Button>
+
+                      <p className="text-xs text-slate-500 text-center">
+                        Ihr Objekt ist nicht dabei?{' '}
+                        <button
+                          type="button"
+                          className="text-[#2c7a7b] font-semibold underline underline-offset-2"
+                          onClick={() => setShowClassicForm(true)}
+                          data-testid="classic-form-link"
+                        >
+                          Individuelle Anfrage mit Foto stellen
+                        </button>
+                      </p>
+                    </div>
                     ) : (
                     <form onSubmit={handleSubmit} className="space-y-6">
                       {selectedMetal.finishes.length > 1 && (
