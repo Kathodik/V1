@@ -130,6 +130,9 @@ const AdminPortal = () => {
         cart_enabled: !!pricing.cart_enabled,
         products: pricing.products || [],
         metal_factors: pricing.metal_factors || {},
+        condition_factors: pricing.condition_factors || {},
+        materials: pricing.materials || [],
+        finish_factors: pricing.finish_factors || {},
       }, { headers });
       setPricing(res.data);
       toast.success('Preise gespeichert');
@@ -334,7 +337,7 @@ const AdminPortal = () => {
                       <CardHeader>
                         <CardTitle className="text-lg">Metallfaktoren</CardTitle>
                         <p className="text-sm text-slate-500 font-normal">
-                          Preis = Basispreis × Faktor. Beispiel: Ring 29 € × Gold 4,0 = 116 €.
+                          Preis = Basispreis × Metall × Zustand × Grundmaterial × Finish. Beispiel: Ring 29 € × Gold 4,0 × Neu 1,0 × Messing 1,0 × Roségold 1,15 = 133,40 €.
                         </p>
                       </CardHeader>
                       <CardContent>
@@ -355,6 +358,102 @@ const AdminPortal = () => {
                                 }
                                 className="text-center"
                                 data-testid={`factor-${sym}`}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Zustandsfaktoren</CardTitle>
+                        <p className="text-sm text-slate-500 font-normal">Aufbereitungsaufwand je Bauteilzustand.</p>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-3 gap-3">
+                          {[
+                            { id: 'neu', label: '🟢 Neu / Neuwertig' },
+                            { id: 'leicht', label: '🟡 Leicht oxidiert' },
+                            { id: 'stark', label: '🔴 Starker Rost' },
+                          ].map((c) => (
+                            <div key={c.id} className="p-3 rounded-xl border border-slate-200 text-center">
+                              <p className="text-xs font-semibold text-slate-700 mb-1">{c.label}</p>
+                              <Input
+                                type="number"
+                                step="0.05"
+                                min="0.1"
+                                value={pricing.condition_factors?.[c.id] ?? 1.0}
+                                onChange={(e) =>
+                                  setPricing((prev) => ({
+                                    ...prev,
+                                    condition_factors: { ...prev.condition_factors, [c.id]: e.target.value === '' ? '' : parseFloat(e.target.value) },
+                                  }))
+                                }
+                                className="text-center"
+                                data-testid={`condition-factor-${c.id}`}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Grundmaterial-Faktoren</CardTitle>
+                        <p className="text-sm text-slate-500 font-normal">Vorbehandlungsaufwand je Ausgangsmaterial.</p>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                          {(pricing.materials || []).map((m, idx) => (
+                            <div key={m.id} className="p-3 rounded-xl border border-slate-200 text-center">
+                              <p className="text-xs font-semibold text-slate-700 mb-1">{m.name}</p>
+                              <Input
+                                type="number"
+                                step="0.05"
+                                min="0.1"
+                                value={m.factor}
+                                onChange={(e) =>
+                                  setPricing((prev) => ({
+                                    ...prev,
+                                    materials: prev.materials.map((mm, i) => (i === idx ? { ...mm, factor: e.target.value === '' ? '' : parseFloat(e.target.value) } : mm)),
+                                  }))
+                                }
+                                className="text-center"
+                                data-testid={`material-factor-${m.id}`}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Finish-Faktoren</CardTitle>
+                        <p className="text-sm text-slate-500 font-normal">
+                          Aufschlag für besondere Ausführungen (z. B. Roségold, Schwarzchrom). Standard-Finishes ohne Eintrag zählen als 1,0.
+                        </p>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+                          {Object.entries(pricing.finish_factors || {}).map(([fid, factor]) => (
+                            <div key={fid} className="p-3 rounded-xl border border-slate-200 text-center">
+                              <p className="text-[11px] font-semibold text-slate-700 mb-1 break-all">{fid}</p>
+                              <Input
+                                type="number"
+                                step="0.05"
+                                min="0.1"
+                                value={factor}
+                                onChange={(e) =>
+                                  setPricing((prev) => ({
+                                    ...prev,
+                                    finish_factors: { ...prev.finish_factors, [fid]: e.target.value === '' ? '' : parseFloat(e.target.value) },
+                                  }))
+                                }
+                                className="text-center"
+                                data-testid={`finish-factor-${fid}`}
                               />
                             </div>
                           ))}

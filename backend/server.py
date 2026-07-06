@@ -701,6 +701,25 @@ DEFAULT_PRICING = {
         "Zn": 1.0, "Sn": 1.1, "Cu": 1.2, "Ni": 1.3, "Co": 1.4, "WB": 1.5,
         "Cr": 1.6, "Ag": 1.8, "Ru": 2.5, "Pd": 3.0, "Au": 4.0, "Pt": 4.5, "Rh": 5.0,
     },
+    # Zustand des Bauteils (Aufbereitungsaufwand)
+    "condition_factors": {"neu": 1.0, "leicht": 1.15, "stark": 1.4},
+    # Grundmaterial (Vorbehandlungsaufwand)
+    "materials": [
+        {"id": "kupfer", "name": "Kupfer", "factor": 1.0},
+        {"id": "messing", "name": "Messing", "factor": 1.0},
+        {"id": "silber", "name": "Silber", "factor": 1.0},
+        {"id": "stahl", "name": "Stahl", "factor": 1.15},
+        {"id": "edelstahl", "name": "Edelstahl", "factor": 1.25},
+        {"id": "zamak", "name": "Zink-Druckguss", "factor": 1.2},
+        {"id": "aluminium", "name": "Aluminium", "factor": 1.35},
+        {"id": "unbekannt", "name": "Unbekannt / Sonstiges", "factor": 1.2},
+    ],
+    # Finish/Modifikation (Aufschlag je Ausführung; fehlende IDs zählen als 1.0)
+    "finish_factors": {
+        "cr-black": 1.2, "ni-black": 1.15, "ni-satin": 1.1, "cu-red": 1.05,
+        "cu-antique": 1.1, "zn-yellow": 1.05, "zn-blue": 1.05, "rh-black": 1.25,
+        "pd-bright": 1.1, "wb-bright": 1.1, "au-rose": 1.15,
+    },
 }
 
 async def _get_pricing():
@@ -711,6 +730,9 @@ class PricingUpdate(BaseModel):
     cart_enabled: bool
     products: List[dict]
     metal_factors: dict
+    condition_factors: dict = {}
+    materials: List[dict] = []
+    finish_factors: dict = {}
 
 @api_router.get("/pricing")
 async def get_pricing():
@@ -732,19 +754,38 @@ async def update_pricing(update: PricingUpdate, current_user: User = Depends(get
         if p["base_price_eur"] < 0:
             raise HTTPException(status_code=400, detail=f"Negativer Basispreis bei {p.get('name')}")
         p["active"] = bool(p.get("active", True))
-    factors = {}
-    for sym, f in update.metal_factors.items():
+    def _clean_factors(raw: dict, label: str) -> dict:
+        cleaned = {}
+        for key, f in raw.items():
+            try:
+                cleaned[key] = round(float(f), 2)
+            except (TypeError, ValueError):
+                raise HTTPException(status_code=400, detail=f"Ungültiger {label}-Faktor für {key}")
+            if cleaned[key] <= 0:
+                raise HTTPException(status_code=400, detail=f"{label}-Faktor für {key} muss > 0 sein")
+        return cleaned
+
+    factors = _clean_factors(update.metal_factors, "Metall")
+    condition_factors = _clean_factors(update.condition_factors or DEFAULT_PRICING["condition_factors"], "Zustand")
+    finish_factors = _clean_factors(update.finish_factors or {}, "Finish")
+    materials = update.materials or DEFAULT_PRICING["materials"]
+    for m in materials:
+        if not m.get("id") or not m.get("name"):
+            raise HTTPException(status_code=400, detail="Material braucht id und name")
         try:
-            factors[sym] = round(float(f), 2)
+            m["factor"] = round(float(m.get("factor", 1.0)), 2)
         except (TypeError, ValueError):
-            raise HTTPException(status_code=400, detail=f"Ungültiger Faktor für {sym}")
-        if factors[sym] <= 0:
-            raise HTTPException(status_code=400, detail=f"Faktor für {sym} muss > 0 sein")
+            raise HTTPException(status_code=400, detail=f"Ungültiger Faktor bei Material {m.get('name')}")
+        if m["factor"] <= 0:
+            raise HTTPException(status_code=400, detail=f"Faktor bei Material {m.get('name')} muss > 0 sein")
     doc = {
         "key": "pricing",
         "cart_enabled": update.cart_enabled,
         "products": update.products,
         "metal_factors": factors,
+        "condition_factors": condition_factors,
+        "materials": materials,
+        "finish_factors": finish_factors,
         "updated_at": datetime.now(timezone.utc).isoformat(),
         "updated_by": current_user.email,
     }
@@ -754,7 +795,10 @@ async def update_pricing(update: PricingUpdate, current_user: User = Depends(get
 class CartItemRequest(BaseModel):
     product_id: str
     metal: str          # Metall-Symbol, z. B. "Au"
-    finish: Optional[str] = None
+    finish: Optional[str] = None        # Finish-ID, z. B. "au-rose"
+    finish_name: Optional[str] = None   # Anzeigename, z. B. "Roségold"
+    condition: Optional[str] = None     # neu | leicht | stark
+    base_material: Optional[str] = None # Material-ID, z. B. "messing"
     quantity: int = Field(ge=1, le=500)
 
 class CartOrderRequest(BaseModel):
@@ -770,6 +814,9 @@ async def create_cart_order(request: CartOrderRequest):
     pricing = await _get_pricing()
     products = {p["id"]: p for p in pricing.get("products", []) if p.get("active", True)}
     factors = pricing.get("metal_factors", {})
+    condition_factors = pricing.get("condition_factors", {})
+    material_factors = {m["id"]: m for m in pricing.get("materials", [])}
+    finish_factors = pricing.get("finish_factors", {})
 
     lines = []
     total = 0.0
@@ -780,7 +827,11 @@ async def create_cart_order(request: CartOrderRequest):
         factor = factors.get(item.metal)
         if not factor:
             raise HTTPException(status_code=400, detail=f"Unbekanntes Metall: {item.metal}")
-        unit = round(product["base_price_eur"] * factor, 2)
+        cond_factor = condition_factors.get(item.condition, 1.0) if item.condition else 1.0
+        material = material_factors.get(item.base_material)
+        mat_factor = material["factor"] if material else 1.0
+        fin_factor = finish_factors.get(item.finish, 1.0) if item.finish else 1.0
+        unit = round(product["base_price_eur"] * factor * cond_factor * mat_factor * fin_factor, 2)
         line_total = round(unit * item.quantity, 2)
         total = round(total + line_total, 2)
         lines.append({
@@ -788,6 +839,9 @@ async def create_cart_order(request: CartOrderRequest):
             "product_name": product["name"],
             "metal": item.metal,
             "finish": item.finish,
+            "finish_name": item.finish_name,
+            "condition": item.condition,
+            "base_material": material["name"] if material else item.base_material,
             "quantity": item.quantity,
             "unit_price_eur": unit,
             "line_total_eur": line_total,
@@ -814,7 +868,7 @@ async def create_cart_order(request: CartOrderRequest):
     rows = "".join(
         f"""<tr>
           <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;">{l['product_name']}<br>
-              <span style="color:#94a3b8;font-size:12px;">{l['metal']}{' · ' + l['finish'] if l['finish'] else ''}</span></td>
+              <span style="color:#94a3b8;font-size:12px;">{l['metal']}{' · ' + (l.get('finish_name') or l['finish']) if l.get('finish') else ''}{' · ' + l['base_material'] if l.get('base_material') else ''}{' · Zustand: ' + l['condition'] if l.get('condition') else ''}</span></td>
           <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;text-align:center;">{l['quantity']}×</td>
           <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;text-align:right;white-space:nowrap;">{l['line_total_eur']:.2f} €</td>
         </tr>"""

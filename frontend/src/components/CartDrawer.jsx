@@ -31,7 +31,10 @@ const CartDrawer = () => {
         items: items.map((i) => ({
           product_id: i.product_id,
           metal: i.metal,
-          finish: i.finish_name || i.finish || null,
+          finish: i.finish || null,
+          finish_name: i.finish_name || null,
+          condition: i.condition || null,
+          base_material: i.base_material || null,
           quantity: i.quantity,
         })),
       });
@@ -64,7 +67,10 @@ const CartDrawer = () => {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-slate-800 truncate">{item.product_name}</p>
                     <p className="text-xs text-slate-500 truncate">
-                      {item.metal_name || item.metal}{item.finish_name ? ` · ${item.finish_name}` : ''}
+                      {item.metal_name || item.metal}
+                      {item.finish_name ? ` · ${item.finish_name}` : ''}
+                      {item.material_name ? ` · ${item.material_name}` : ''}
+                      {item.condition ? ` · ${{ neu: 'Neuwertig', leicht: 'Leicht oxidiert', stark: 'Starker Rost' }[item.condition] || item.condition}` : ''}
                     </p>
                     <p className="text-xs text-slate-400 mt-0.5">{eur(item.unit_price_eur)} / Stück</p>
                   </div>
