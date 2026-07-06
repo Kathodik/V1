@@ -1,5 +1,5 @@
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, UploadFile, File, Form
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -96,6 +96,17 @@ def _email_layout(inner_html: str) -> str:
       </div>
     </div>
     """
+
+# Ein-Klick-Buttons für die Admin-Benachrichtigung (bestätigen/ablehnen ohne Login)
+def _order_action_buttons(order_id: str, token: str) -> str:
+    base = os.environ.get('FRONTEND_URL', 'https://kathodik.de')
+    return f"""
+    <div style="text-align:center;margin:24px 0;">
+      <a href="{base}/api/orders/{order_id}/action?token={token}&action=confirm"
+         style="display:inline-block;padding:12px 28px;background:#2c7a7b;color:white;text-decoration:none;border-radius:999px;font-weight:bold;margin:4px;">✔ Auftrag bestätigen</a>
+      <a href="{base}/api/orders/{order_id}/action?token={token}&action=decline"
+         style="display:inline-block;padding:12px 28px;background:#ffffff;color:#dc2626;border:2px solid #dc2626;text-decoration:none;border-radius:999px;font-weight:bold;margin:4px;">✕ Ablehnen</a>
+    </div>"""
 
 # Resend email helper
 async def send_email_via_resend(to_email: str, subject: str, html_content: str, attachments: list = None):
@@ -861,6 +872,7 @@ async def create_cart_order(request: CartOrderRequest):
         "status": "new",
         "payment_status": "pending",
         "payment_amount_eur": total,
+        "action_token": secrets.token_urlsafe(24),
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     await db.configurator_orders.insert_one(doc)
@@ -911,6 +923,7 @@ async def create_cart_order(request: CartOrderRequest):
         <strong>E-Mail:</strong> {request.email}<br>
         <strong>Telefon:</strong> {request.phone or 'Nicht angegeben'}</p>
         {items_table}
+        {_order_action_buttons(order_id, doc['action_token'])}
         <p style="color:#64748b;font-size:13px;">Auftragsnummer: {order_id} · Zahlung: ausstehend (PayPal)</p>
         """
     )
@@ -1101,6 +1114,7 @@ async def create_configurator_order(request: ConfiguratorOrderRequest):
         "has_reference_image": request.reference_image is not None,
         "image_count": len(request.images) if request.images else 0,
         "status": "new",
+        "action_token": secrets.token_urlsafe(24),
         "payment_status": "pending" if request.order_type == "metal_order" else "not_applicable",
         "payment_amount_eur": 49 if request.order_type == "metal_order" else 0,
         "shopify_checkout_id": None,
@@ -1196,6 +1210,7 @@ async def create_configurator_order(request: ConfiguratorOrderRequest):
         <p>{request.description or 'Keine Beschreibung'}</p>
         <p><strong>Bilder:</strong> {doc['image_count']} Bauteilfoto(s) angehängt</p>
         <p><strong>Datei hochgeladen:</strong> {'Ja - ' + (request.file_name or '') if request.file_data else 'Nein'}</p>
+        {_order_action_buttons(order_id, doc['action_token'])}
         <hr>
         <p><strong>Auftrags-ID:</strong> {order_id}</p>
         """
@@ -1219,6 +1234,101 @@ async def create_configurator_order(request: ConfiguratorOrderRequest):
     
     return {"id": order_id, "message": "Auftrag erfolgreich erstellt", "order_type": request.order_type}
 
+# ─── Auftragsstatus: Bestätigen/Ablehnen/Fortschritt + Kundenbenachrichtigung ───
+ORDER_STATUSES = {
+    "new": "Neu",
+    "confirmed": "Bestätigt",
+    "declined": "Abgelehnt",
+    "in_progress": "In Arbeit",
+    "completed": "Abgeschlossen",
+}
+
+async def _apply_order_status(order: dict, new_status: str, notify_customer: bool = True):
+    await db.configurator_orders.update_one(
+        {"id": order["id"]},
+        {"$set": {"status": new_status, "status_updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    if not notify_customer or not order.get("email"):
+        return
+    subjects = {
+        "confirmed": "Kathodik – Ihr Auftrag wurde bestätigt ✔",
+        "declined": "Kathodik – Rückmeldung zu Ihrem Auftrag",
+        "in_progress": "Kathodik – Ihr Auftrag ist in Arbeit",
+        "completed": "Kathodik – Ihr Auftrag ist abgeschlossen",
+    }
+    bodies = {
+        "confirmed": f"""
+            <h2 style="margin:0 0 8px;color:#1e293b;">Gute Nachrichten, {order.get('name', '')}!</h2>
+            <p>Wir haben Ihren Auftrag geprüft und <strong>bestätigt</strong>.
+            Falls noch nicht geschehen, senden Sie uns Ihre Stücke bitte mit dem Versandlabel zu –
+            wir legen los, sobald sie bei uns eintreffen.</p>
+            <p style="color:#64748b;font-size:13px;">Auftragsnummer: {order['id']}</p>
+            <p>Mit freundlichen Grüßen<br><strong>Ihr Kathodik-Team</strong></p>""",
+        "declined": f"""
+            <h2 style="margin:0 0 8px;color:#1e293b;">Rückmeldung zu Ihrem Auftrag</h2>
+            <p>Leider können wir Ihren Auftrag in dieser Form nicht annehmen.
+            Bereits geleistete Zahlungen erstatten wir selbstverständlich zurück.</p>
+            <p>Gern finden wir gemeinsam eine Alternative – antworten Sie einfach auf diese E-Mail
+            oder rufen Sie uns an.</p>
+            <p style="color:#64748b;font-size:13px;">Auftragsnummer: {order['id']}</p>
+            <p>Mit freundlichen Grüßen<br><strong>Ihr Kathodik-Team</strong></p>""",
+        "in_progress": f"""
+            <h2 style="margin:0 0 8px;color:#1e293b;">Es geht los!</h2>
+            <p>Ihre Stücke sind bei uns eingetroffen und werden jetzt veredelt.
+            Wir melden uns, sobald der Auftrag abgeschlossen ist.</p>
+            <p style="color:#64748b;font-size:13px;">Auftragsnummer: {order['id']}</p>
+            <p>Mit freundlichen Grüßen<br><strong>Ihr Kathodik-Team</strong></p>""",
+        "completed": f"""
+            <h2 style="margin:0 0 8px;color:#1e293b;">Fertig! ✨</h2>
+            <p>Ihr Auftrag ist abgeschlossen – Ihre veredelten Stücke machen sich auf den Rückweg zu Ihnen.</p>
+            <p>Wir würden uns freuen, wenn Sie uns nach Erhalt eine Rückmeldung geben.</p>
+            <p style="color:#64748b;font-size:13px;">Auftragsnummer: {order['id']}</p>
+            <p>Mit freundlichen Grüßen<br><strong>Ihr Kathodik-Team</strong></p>""",
+    }
+    if new_status in subjects:
+        await send_email_via_resend(order["email"], subjects[new_status], bodies[new_status])
+
+class OrderStatusUpdate(BaseModel):
+    status: str
+
+@api_router.put("/configurator/orders/{order_id}/status")
+async def update_order_status(order_id: str, update: OrderStatusUpdate, current_user: User = Depends(get_current_user)):
+    """Update order status (admin only); notifies the customer by email."""
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    if update.status not in ORDER_STATUSES:
+        raise HTTPException(status_code=400, detail="Ungültiger Status")
+    order = await db.configurator_orders.find_one({"id": order_id}, {"_id": 0})
+    if not order:
+        raise HTTPException(status_code=404, detail="Auftrag nicht gefunden")
+    await _apply_order_status(order, update.status)
+    return {"id": order_id, "status": update.status}
+
+def _action_page(title: str, text: str, color: str = "#2c7a7b") -> HTMLResponse:
+    return HTMLResponse(f"""
+        <html><head><meta charset="utf-8"><title>{title}</title></head>
+        <body style="font-family:-apple-system,sans-serif;background:#f1f5f9;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;">
+          <div style="background:white;border-radius:16px;padding:40px;max-width:420px;text-align:center;border-top:5px solid {color};">
+            <h2 style="color:#1e293b;margin:0 0 12px;">{title}</h2>
+            <p style="color:#475569;">{text}</p>
+          </div>
+        </body></html>""")
+
+@api_router.get("/orders/{order_id}/action")
+async def order_action_via_email(order_id: str, token: str, action: str):
+    """One-click confirm/decline from the admin notification email (token-protected)."""
+    order = await db.configurator_orders.find_one({"id": order_id}, {"_id": 0})
+    if not order or not order.get("action_token") or order["action_token"] != token:
+        return _action_page("Link ungültig", "Dieser Aktionslink ist ungültig oder abgelaufen.", "#dc2626")
+    if action not in ("confirm", "decline"):
+        return _action_page("Unbekannte Aktion", "Diese Aktion wird nicht unterstützt.", "#dc2626")
+    new_status = "confirmed" if action == "confirm" else "declined"
+    if order.get("status") == new_status:
+        return _action_page("Bereits erledigt", f"Der Auftrag ist bereits als „{ORDER_STATUSES[new_status]}“ markiert.")
+    await _apply_order_status(order, new_status)
+    label = ORDER_STATUSES[new_status]
+    return _action_page(f"Auftrag {label.lower()}", f"Der Auftrag von {order.get('name', '')} wurde als „{label}“ markiert. Der Kunde wurde per E-Mail informiert.")
+
 @api_router.get("/configurator/orders/{order_id}/files")
 async def get_configurator_order_files(order_id: str, current_user: User = Depends(get_current_user)):
     """Get the stored files/images of an order (admin only)."""
@@ -1236,7 +1346,7 @@ async def get_configurator_orders(current_user: User = Depends(get_current_user)
         query = {}
     else:
         query = {"email": current_user.email}
-    orders = await db.configurator_orders.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
+    orders = await db.configurator_orders.find(query, {"_id": 0, "action_token": 0}).sort("created_at", -1).to_list(100)
     return orders
 
 # ─── Analytics Tracking ───
