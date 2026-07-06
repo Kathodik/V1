@@ -137,7 +137,7 @@ const Home = () => {
                 Was wir bieten
               </p>
               <h2 className="text-4xl sm:text-5xl font-bold text-slate-800 leading-tight">
-                Unsere Dienstleistungen
+                Unsere Leistungen
               </h2>
             </div>
           </AnimateOnScroll>

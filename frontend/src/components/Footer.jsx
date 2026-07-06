@@ -31,7 +31,7 @@ const Footer = () => {
             <h3 className="text-sm font-semibold tracking-[0.15em] uppercase text-slate-400 mb-5">Navigation</h3>
             <ul className="space-y-3">
               {[
-                { name: 'Dienstleistungen', href: '/services' },
+                { name: 'Leistungen', href: '/services' },
                 { name: '3D Konfigurator', href: '/3d-configurator' },
                 { name: 'Referenzen', href: '/references' },
                 { name: 'Kontakt', href: '/contact' },
