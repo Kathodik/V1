@@ -87,7 +87,7 @@ const Header = () => {
               </Link>
             ))}
             <CartButton className="ml-1" />
-            <Link to={user ? '/portal' : '/portal/login'}>
+            <Link to={user ? (user.is_admin ? '/admin' : '/portal') : '/portal/login'}>
               <Button
                 size="sm"
                 className="ml-3 bg-[#2c7a7b] hover:bg-[#285e61] text-white rounded-full shadow-md shadow-[#2c7a7b]/20 px-5"
@@ -138,7 +138,7 @@ const Header = () => {
               </Link>
             ))}
             <Link
-              to={user ? '/portal' : '/portal/login'}
+              to={user ? (user.is_admin ? '/admin' : '/portal') : '/portal/login'}
               onClick={() => setMobileMenuOpen(false)}
             >
               <Button className="w-full bg-[#2c7a7b] hover:bg-[#285e61] text-white mt-2 rounded-xl">

@@ -28,6 +28,10 @@ const CustomerPortal = () => {
       navigate('/portal/login');
       return;
     }
+    if (user.is_admin) {
+      navigate('/admin');
+      return;
+    }
     fetchData();
   }, [user, navigate]);
 
