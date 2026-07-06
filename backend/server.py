@@ -1471,6 +1471,54 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# ─── Zahlungserinnerung: unbezahlte Bestellungen nach 24h einmalig erinnern ───
+async def _payment_reminder_loop():
+    while True:
+        try:
+            cutoff = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
+            orders = await db.configurator_orders.find({
+                "payment_status": "pending",
+                "reminder_sent": {"$ne": True},
+                "order_type": {"$in": ["metal_order", "cart_order"]},
+                "created_at": {"$lt": cutoff},
+            }, {"_id": 0}).to_list(100)
+            for o in orders:
+                amount = o.get("payment_amount_eur", 0)
+                items_html = ""
+                if o.get("items"):
+                    items_html = "".join(
+                        f"<p style='margin:2px 0;color:#64748b;font-size:14px;'>{l['quantity']}× {l['product_name']} · {l['metal']} — {l['line_total_eur']:.2f} €</p>"
+                        for l in o["items"]
+                    )
+                await send_email_via_resend(
+                    to_email=o["email"],
+                    subject="Kathodik – Ihre Bestellung wartet noch auf die Zahlung",
+                    html_content=f"""
+                    <h2 style="margin:0 0 8px;color:#1e293b;">Fast geschafft, {o.get('name', '')}!</h2>
+                    <p>Ihre Bestellung vom {o.get('created_at', '')[:10]} ist bei uns eingegangen,
+                    die Zahlung über <strong>{amount:.2f} €</strong> steht aber noch aus.</p>
+                    {items_html}
+                    <p>Besuchen Sie einfach erneut
+                    <a href="https://kathodik.de/services" style="color:#2c7a7b;font-weight:bold;">kathodik.de/services</a>,
+                    um die Bestellung abzuschließen – oder antworten Sie auf diese E-Mail, dann helfen wir Ihnen weiter.</p>
+                    <p style="color:#94a3b8;font-size:12px;">Falls Sie bereits bezahlt haben oder die Bestellung nicht mehr
+                    wünschen, können Sie diese Nachricht ignorieren. (Auftragsnummer: {o['id']})</p>
+                    <p>Mit freundlichen Grüßen<br><strong>Ihr Kathodik-Team</strong></p>
+                    """
+                )
+                await db.configurator_orders.update_one(
+                    {"id": o["id"]},
+                    {"$set": {"reminder_sent": True, "reminder_sent_at": datetime.now(timezone.utc).isoformat()}}
+                )
+                logger.info(f"Payment reminder sent for order {o['id']}")
+        except Exception as e:
+            logger.error(f"Payment reminder loop error: {e}")
+        await asyncio.sleep(6 * 3600)
+
+@app.on_event("startup")
+async def start_payment_reminder_loop():
+    asyncio.create_task(_payment_reminder_loop())
+
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()

@@ -31,6 +31,15 @@ const AdminPortal = () => {
   const [pricing, setPricing] = useState(null);
   const [savingPricing, setSavingPricing] = useState(false);
   const [orderFiles, setOrderFiles] = useState({});
+  const [orderFilter, setOrderFilter] = useState('all');
+
+  const ORDER_FILTERS = [
+    { id: 'all', label: 'Alle', types: null },
+    { id: 'lohn', label: 'Lohngalvanik', types: ['metal_order'] },
+    { id: 'cart', label: 'Warenkorb', types: ['cart_order'] },
+    { id: '3d', label: '3D-Konfigurator', types: ['upload', 'partner_model', 'ai_generate'] },
+    { id: 'vorort', label: 'Vor-Ort', types: ['mobile_service'] },
+  ];
 
   const loadOrderFiles = async (orderId) => {
     if (orderFiles[orderId]) {
@@ -236,7 +245,7 @@ const AdminPortal = () => {
                 </TabsTrigger>
                 <TabsTrigger value="configurator">
                   <Box className="h-4 w-4 mr-2" />
-                  3D ({configuratorOrders.length})
+                  Aufträge ({configuratorOrders.length})
                 </TabsTrigger>
                 <TabsTrigger value="waitlist">
                   <Bell className="h-4 w-4 mr-2" />
@@ -511,16 +520,43 @@ const AdminPortal = () => {
 
               {/* Configurator Orders Tab */}
               <TabsContent value="configurator">
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {ORDER_FILTERS.map((f) => {
+                    const count = f.types
+                      ? configuratorOrders.filter((o) => f.types.includes(o.order_type)).length
+                      : configuratorOrders.length;
+                    return (
+                      <button
+                        key={f.id}
+                        type="button"
+                        onClick={() => setOrderFilter(f.id)}
+                        className={`px-4 py-1.5 rounded-full text-sm border-2 transition-colors ${
+                          orderFilter === f.id
+                            ? 'border-[#2c7a7b] bg-[#2c7a7b]/5 text-[#2c7a7b] font-semibold'
+                            : 'border-slate-200 text-slate-600 hover:border-slate-300'
+                        }`}
+                        data-testid={`order-filter-${f.id}`}
+                      >
+                        {f.label} ({count})
+                      </button>
+                    );
+                  })}
+                </div>
                 <div className="space-y-3">
-                  {configuratorOrders.length === 0 ? (
+                  {(() => {
+                    const activeFilter = ORDER_FILTERS.find((f) => f.id === orderFilter);
+                    const filtered = activeFilter?.types
+                      ? configuratorOrders.filter((o) => activeFilter.types.includes(o.order_type))
+                      : configuratorOrders;
+                    return filtered.length === 0 ? (
                     <Card className="bg-white border-slate-200">
                       <CardContent className="p-8 text-center">
                         <Box className="h-12 w-12 text-slate-300 mx-auto mb-3" />
-                        <p className="text-slate-500">Keine 3D-Konfigurator Aufträge</p>
+                        <p className="text-slate-500">Keine Aufträge in dieser Kategorie</p>
                       </CardContent>
                     </Card>
                   ) : (
-                    configuratorOrders.map((order, i) => {
+                    filtered.map((order, i) => {
                       const typeLabels = { upload: 'Eigene Datei', partner_model: 'Partner-Modellierung', ai_generate: 'Luigi – KI-Konzept', mobile_service: 'Mobile Dienstleistung', metal_order: 'Metall-Auftrag', cart_order: 'Warenkorb-Bestellung' };
                       const typeColors = { upload: 'bg-blue-100 text-blue-700', partner_model: 'bg-purple-100 text-purple-700', ai_generate: 'bg-teal-100 text-teal-700', mobile_service: 'bg-amber-100 text-amber-700', metal_order: 'bg-emerald-100 text-emerald-700', cart_order: 'bg-emerald-100 text-emerald-700' };
                       const isMetalOrder = order.order_type === 'metal_order' || order.order_type === 'cart_order';
@@ -598,7 +634,8 @@ const AdminPortal = () => {
                         </Card>
                       );
                     })
-                  )}
+                  );
+                  })()}
                 </div>
               </TabsContent>
 
