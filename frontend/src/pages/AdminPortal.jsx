@@ -41,6 +41,25 @@ const AdminPortal = () => {
     { id: 'vorort', label: 'Vor-Ort', types: ['mobile_service'] },
   ];
 
+  const STATUS_META = {
+    new: { label: 'Neu', cls: 'bg-amber-100 text-amber-700' },
+    confirmed: { label: 'Bestätigt', cls: 'bg-green-100 text-green-700' },
+    declined: { label: 'Abgelehnt', cls: 'bg-red-100 text-red-700' },
+    in_progress: { label: 'In Arbeit', cls: 'bg-blue-100 text-blue-700' },
+    completed: { label: 'Abgeschlossen', cls: 'bg-slate-200 text-slate-700' },
+  };
+
+  const updateOrderStatus = async (orderId, status) => {
+    try {
+      const headers = { Authorization: `Bearer ${token}` };
+      await axios.put(`${API}/configurator/orders/${orderId}/status`, { status }, { headers });
+      setConfiguratorOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, status } : o)));
+      toast.success(`Status geändert: ${STATUS_META[status]?.label || status}. Der Kunde wurde per E-Mail informiert.`);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Status konnte nicht geändert werden');
+    }
+  };
+
   const loadOrderFiles = async (orderId) => {
     if (orderFiles[orderId]) {
       setOrderFiles((prev) => { const n = { ...prev }; delete n[orderId]; return n; });
@@ -724,10 +743,38 @@ const AdminPortal = () => {
                               </div>
                               <div className="text-right">
                                 <p className="text-xs text-slate-400">{new Date(order.created_at).toLocaleDateString('de-DE')}</p>
-                                <Badge className={`text-xs mt-1 ${order.status === 'new' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}`}>
-                                  {order.status === 'new' ? 'Neu' : order.status}
+                                <Badge className={`text-xs mt-1 ${(STATUS_META[order.status] || STATUS_META.new).cls}`}>
+                                  {(STATUS_META[order.status] || { label: order.status }).label}
                                 </Badge>
                               </div>
+                            </div>
+                            <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-slate-100">
+                              {order.status === 'new' && (
+                                <>
+                                  <Button size="sm" onClick={() => updateOrderStatus(order.id, 'confirmed')} className="bg-[#2c7a7b] hover:bg-[#285e61] text-white rounded-full px-4 h-8 text-xs" data-testid={`confirm-order-${order.id}`}>
+                                    ✔ Bestätigen
+                                  </Button>
+                                  <Button size="sm" variant="outline" onClick={() => updateOrderStatus(order.id, 'declined')} className="border-red-200 text-red-600 hover:bg-red-50 rounded-full px-4 h-8 text-xs" data-testid={`decline-order-${order.id}`}>
+                                    ✕ Ablehnen
+                                  </Button>
+                                </>
+                              )}
+                              {order.status === 'confirmed' && (
+                                <Button size="sm" onClick={() => updateOrderStatus(order.id, 'in_progress')} className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-4 h-8 text-xs">
+                                  🛠 In Arbeit
+                                </Button>
+                              )}
+                              {order.status === 'in_progress' && (
+                                <Button size="sm" onClick={() => updateOrderStatus(order.id, 'completed')} className="bg-slate-700 hover:bg-slate-800 text-white rounded-full px-4 h-8 text-xs">
+                                  ✅ Abschließen
+                                </Button>
+                              )}
+                              {order.status === 'declined' && (
+                                <Button size="sm" variant="outline" onClick={() => updateOrderStatus(order.id, 'confirmed')} className="rounded-full px-4 h-8 text-xs">
+                                  Doch bestätigen
+                                </Button>
+                              )}
+                              <span className="text-[11px] text-slate-400 self-center ml-auto">Statuswechsel benachrichtigt den Kunden per E-Mail</span>
                             </div>
                           </CardContent>
                         </Card>
