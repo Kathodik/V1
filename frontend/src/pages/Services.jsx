@@ -362,8 +362,10 @@ const Services = () => {
   const [orderSubmitting, setOrderSubmitting] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [cartQty, setCartQty] = useState(1);
+  const [cartMaterial, setCartMaterial] = useState(null);
   const [showClassicForm, setShowClassicForm] = useState(false);
-  const { cartEnabled, products: cartProducts, unitPrice, addItem, setIsOpen: setCartOpen } = useCart();
+  const { cartEnabled, products: cartProducts, materials: cartMaterials, unitPrice, addItem, setIsOpen: setCartOpen } = useCart();
+  const cartPriceOpts = { condition, base_material: cartMaterial, finish: selectedFinish };
   const scrollY = useParallax();
   const detailRef = useRef(null);
 
@@ -386,12 +388,15 @@ const Services = () => {
     setCondition('');
     setSelectedProduct(null);
     setCartQty(1);
+    setCartMaterial(null);
     setShowClassicForm(false);
     setTimeout(() => detailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
   };
 
   const handleAddToCart = () => {
     if (!selectedProduct) { toast.error('Bitte wählen Sie ein Produkt'); return; }
+    if (!condition) { toast.error('Bitte wählen Sie den Zustand des Bauteils'); return; }
+    if (!cartMaterial) { toast.error('Bitte wählen Sie das Grundmaterial'); return; }
     const finish = selectedMetal.finishes.find(f => f.id === selectedFinish);
     addItem({
       product_id: selectedProduct,
@@ -399,6 +404,8 @@ const Services = () => {
       metal_name: selectedMetal.name,
       finish: selectedFinish,
       finish_name: finish?.name,
+      condition,
+      base_material: cartMaterial,
       quantity: cartQty,
     });
     toast.success('Zum Warenkorb hinzugefügt');
@@ -1133,10 +1140,57 @@ const Services = () => {
                       )}
 
                       <div>
+                        <Label className="text-slate-800 mb-2 block font-semibold">Zustand des Bauteils *</Label>
+                        <div className="grid grid-cols-3 gap-2">
+                          {[
+                            { id: 'neu', label: 'Neu / Neuwertig', dot: 'bg-green-500' },
+                            { id: 'leicht', label: 'Leicht oxidiert', dot: 'bg-yellow-500' },
+                            { id: 'stark', label: 'Starker Rost', dot: 'bg-red-500' },
+                          ].map((opt) => (
+                            <button
+                              key={opt.id}
+                              type="button"
+                              onClick={() => setCondition(opt.id)}
+                              className={`p-3 rounded-xl border-2 text-left transition-all ${
+                                condition === opt.id
+                                  ? 'border-[#2c7a7b] bg-[#2c7a7b]/5 shadow-sm'
+                                  : 'border-slate-200 bg-white hover:border-slate-300'
+                              }`}
+                              data-testid={`cart-condition-${opt.id}`}
+                            >
+                              <span className={`inline-block w-2.5 h-2.5 rounded-full ${opt.dot} mb-1`} />
+                              <p className="text-xs font-semibold text-slate-700 leading-tight">{opt.label}</p>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label className="text-slate-800 mb-2 block font-semibold">Grundmaterial *</Label>
+                        <div className="flex flex-wrap gap-2">
+                          {cartMaterials.map((m) => (
+                            <button
+                              key={m.id}
+                              type="button"
+                              onClick={() => setCartMaterial(m.id)}
+                              className={`px-3.5 py-2 rounded-full text-sm border-2 transition-colors ${
+                                cartMaterial === m.id
+                                  ? 'border-[#2c7a7b] bg-[#2c7a7b]/5 text-[#2c7a7b] font-semibold'
+                                  : 'border-slate-200 text-slate-600 hover:border-slate-300'
+                              }`}
+                              data-testid={`cart-material-${m.id}`}
+                            >
+                              {m.name}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div>
                         <Label className="text-slate-800 mb-2 block font-semibold">Produkt wählen *</Label>
                         <div className="grid grid-cols-2 gap-3">
                           {cartProducts.map((p) => {
-                            const price = unitPrice(p.id, selectedMetal.symbol);
+                            const price = unitPrice(p.id, selectedMetal.symbol, cartPriceOpts);
                             return (
                               <button
                                 key={p.id}
@@ -1158,7 +1212,7 @@ const Services = () => {
                           })}
                         </div>
                         <p className="text-xs text-slate-400 mt-2">
-                          Pauschalpreis je Produktkategorie · Metall {selectedMetal.name} bereits eingerechnet
+                          Pauschalpreis je Produktkategorie · Metall, Ausführung, Zustand und Grundmaterial bereits eingerechnet
                         </p>
                       </div>
 
@@ -1188,8 +1242,8 @@ const Services = () => {
                       <div className="flex items-center justify-between p-5 rounded-2xl border border-[#2c7a7b]/20 bg-gradient-to-r from-[#2c7a7b]/[0.05] to-white">
                         <span className="text-sm font-semibold text-slate-600">Ihr Preis</span>
                         <span className="text-2xl font-bold text-slate-800" data-testid="cart-live-price">
-                          {selectedProduct && unitPrice(selectedProduct, selectedMetal.symbol) != null
-                            ? `${(unitPrice(selectedProduct, selectedMetal.symbol) * cartQty).toFixed(2).replace('.', ',')} €`
+                          {selectedProduct && unitPrice(selectedProduct, selectedMetal.symbol, cartPriceOpts) != null
+                            ? `${(unitPrice(selectedProduct, selectedMetal.symbol, cartPriceOpts) * cartQty).toFixed(2).replace('.', ',')} €`
                             : '– €'}
                         </span>
                       </div>

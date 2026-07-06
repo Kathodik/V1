@@ -8,8 +8,8 @@ const CartContext = createContext(null);
 
 export const useCart = () => useContext(CartContext);
 
-// Eine Position ist eindeutig über Produkt + Metall + Finish
-const itemKey = (i) => `${i.product_id}|${i.metal}|${i.finish || ''}`;
+// Eine Position ist eindeutig über Produkt + Metall + Finish + Zustand + Material
+const itemKey = (i) => `${i.product_id}|${i.metal}|${i.finish || ''}|${i.condition || ''}|${i.base_material || ''}`;
 
 export const CartProvider = ({ children }) => {
   const [pricing, setPricing] = useState(null);
@@ -42,24 +42,31 @@ export const CartProvider = ({ children }) => {
     [pricing]
   );
   const metalFactors = pricing?.metal_factors || {};
+  const conditionFactors = pricing?.condition_factors || {};
+  const materials = pricing?.materials || [];
+  const finishFactors = pricing?.finish_factors || {};
 
-  const unitPrice = (productId, metalSymbol) => {
+  const unitPrice = (productId, metalSymbol, opts = {}) => {
     const product = products.find((p) => p.id === productId);
     const factor = metalFactors[metalSymbol];
     if (!product || !factor) return null;
-    return Math.round(product.base_price_eur * factor * 100) / 100;
+    const condFactor = opts.condition ? (conditionFactors[opts.condition] || 1.0) : 1.0;
+    const material = materials.find((m) => m.id === opts.base_material);
+    const matFactor = material ? material.factor : 1.0;
+    const finFactor = opts.finish ? (finishFactors[opts.finish] || 1.0) : 1.0;
+    return Math.round(product.base_price_eur * factor * condFactor * matFactor * finFactor * 100) / 100;
   };
 
-  const addItem = ({ product_id, metal, metal_name, finish, finish_name, quantity }) => {
+  const addItem = ({ product_id, metal, metal_name, finish, finish_name, condition, base_material, quantity }) => {
     setItems((prev) => {
-      const key = itemKey({ product_id, metal, finish });
+      const key = itemKey({ product_id, metal, finish, condition, base_material });
       const existing = prev.find((i) => itemKey(i) === key);
       if (existing) {
         return prev.map((i) =>
           itemKey(i) === key ? { ...i, quantity: Math.min(500, i.quantity + quantity) } : i
         );
       }
-      return [...prev, { product_id, metal, metal_name, finish, finish_name, quantity }];
+      return [...prev, { product_id, metal, metal_name, finish, finish_name, condition, base_material, quantity }];
     });
   };
 
@@ -76,11 +83,13 @@ export const CartProvider = ({ children }) => {
 
   const enriched = items.map((i) => {
     const product = products.find((p) => p.id === i.product_id);
-    const unit = unitPrice(i.product_id, i.metal);
+    const unit = unitPrice(i.product_id, i.metal, { condition: i.condition, base_material: i.base_material, finish: i.finish });
+    const material = materials.find((m) => m.id === i.base_material);
     return {
       ...i,
       key: itemKey(i),
       product_name: product?.name || i.product_id,
+      material_name: material?.name,
       unit_price_eur: unit,
       line_total_eur: unit != null ? Math.round(unit * i.quantity * 100) / 100 : null,
     };
@@ -94,6 +103,9 @@ export const CartProvider = ({ children }) => {
         cartEnabled,
         products,
         metalFactors,
+        conditionFactors,
+        materials,
+        finishFactors,
         unitPrice,
         items: enriched,
         addItem,

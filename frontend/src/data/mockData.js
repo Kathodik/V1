@@ -163,7 +163,8 @@ export const metals = [
     description: 'Korrosionsbeständig, hohe Leitfähigkeit', 
     applications: 'Elektronikindustrie, Schmuck, Kontakttechnik',
     finishes: [
-      { id: 'au-standard', name: 'Standard', description: 'Klassische Vergoldung' }
+      { id: 'au-standard', name: 'Standard', description: 'Klassische Vergoldung' },
+      { id: 'au-rose', name: 'Roségold', description: 'Rötliche Goldlegierung' }
     ]
   },
   { 
