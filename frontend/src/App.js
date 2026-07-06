@@ -2,6 +2,8 @@ import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Toaster } from './components/ui/sonner';
 import { AuthProvider } from './contexts/AuthContext';
+import { CartProvider } from './contexts/CartContext';
+import CartDrawer from './components/CartDrawer';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import FloatingChatButton from './components/FloatingChatButton';
@@ -47,6 +49,7 @@ function AppContent() {
         </Routes>
       </main>
       <Footer />
+      <CartDrawer />
       <FloatingChatButton />
       <CookieConsent />
       <Toaster position="top-right" richColors />
@@ -58,7 +61,9 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <AppContent />
+        <CartProvider>
+          <AppContent />
+        </CartProvider>
       </AuthProvider>
     </BrowserRouter>
   );

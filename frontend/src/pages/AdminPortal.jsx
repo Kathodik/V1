@@ -7,7 +7,8 @@ import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
 import { Switch } from '../components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { Settings, Users, Bell, Package, LogOut, Mail, BarChart3, Eye, TrendingUp, Cookie, Box } from 'lucide-react';
+import { Settings, Users, Bell, Package, LogOut, Mail, BarChart3, Eye, TrendingUp, Cookie, Box, Euro, Trash2, Plus } from 'lucide-react';
+import { Input } from '../components/ui/input';
 import { AnimateOnScroll } from '../components/AnimateOnScroll';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'sonner';
@@ -27,6 +28,8 @@ const AdminPortal = () => {
   const [configuratorOrders, setConfiguratorOrders] = useState([]);
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [pricing, setPricing] = useState(null);
+  const [savingPricing, setSavingPricing] = useState(false);
 
   useEffect(() => {
     if (!user || !user.is_admin) {
@@ -48,6 +51,7 @@ const AdminPortal = () => {
         axios.get(`${API}/analytics/stats`, { headers }).catch(() => ({ data: null })),
         axios.get(`${API}/configurator/orders`, { headers }).catch(() => ({ data: [] }))
       ]);
+      axios.get(`${API}/pricing`).then((res) => setPricing(res.data)).catch(() => setPricing(null));
       setAcceptingOrders(settingsRes.data.accepting_orders);
       setPauseMessage(settingsRes.data.pause_message || '');
       setWaitlist(waitlistRes.data);
@@ -91,6 +95,46 @@ const AdminPortal = () => {
     } catch (error) {
       toast.error('Fehler beim Aktualisieren');
     }
+  };
+
+  const savePricing = async () => {
+    if (!pricing) return;
+    setSavingPricing(true);
+    try {
+      const headers = { Authorization: `Bearer ${token}` };
+      const res = await axios.put(`${API}/pricing`, {
+        cart_enabled: !!pricing.cart_enabled,
+        products: pricing.products || [],
+        metal_factors: pricing.metal_factors || {},
+      }, { headers });
+      setPricing(res.data);
+      toast.success('Preise gespeichert');
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Fehler beim Speichern der Preise');
+    } finally {
+      setSavingPricing(false);
+    }
+  };
+
+  const updateProduct = (idx, field, value) => {
+    setPricing((prev) => ({
+      ...prev,
+      products: prev.products.map((p, i) => (i === idx ? { ...p, [field]: value } : p)),
+    }));
+  };
+
+  const removeProduct = (idx) => {
+    setPricing((prev) => ({ ...prev, products: prev.products.filter((_, i) => i !== idx) }));
+  };
+
+  const addProduct = () => {
+    const name = window.prompt('Name des neuen Produkts (z. B. "Feuerzeug"):');
+    if (!name) return;
+    const id = name.toLowerCase().replace(/[^a-z0-9äöüß]+/g, '-').replace(/^-|-$/g, '') || `produkt-${Date.now()}`;
+    setPricing((prev) => ({
+      ...prev,
+      products: [...(prev.products || []), { id, name, base_price_eur: 49.0, active: true }],
+    }));
   };
 
   if (!user || !user.is_admin) return null;
@@ -170,7 +214,7 @@ const AdminPortal = () => {
           {/* Tabs */}
           <AnimateOnScroll variant="fadeUp" delay={200}>
             <Tabs defaultValue="analytics">
-              <TabsList className="grid w-full grid-cols-5 mb-6">
+              <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6 mb-6">
                 <TabsTrigger value="analytics">
                   <BarChart3 className="h-4 w-4 mr-2" />
                   Statistiken
@@ -191,7 +235,120 @@ const AdminPortal = () => {
                   <Mail className="h-4 w-4 mr-2" />
                   Kontakt ({contactMessages.length})
                 </TabsTrigger>
+                <TabsTrigger value="pricing" data-testid="pricing-tab">
+                  <Euro className="h-4 w-4 mr-2" />
+                  Preise
+                </TabsTrigger>
               </TabsList>
+
+              {/* Pricing Tab */}
+              <TabsContent value="pricing">
+                {!pricing ? (
+                  <p className="text-sm text-slate-500">Preiskonfiguration wird geladen…</p>
+                ) : (
+                  <div className="space-y-6" data-testid="pricing-panel">
+                    <Card className="border-2 border-[#2c7a7b]/20">
+                      <CardContent className="p-6 flex items-center justify-between gap-4">
+                        <div>
+                          <p className="font-bold text-slate-800">Neue Bestellstrecke (Warenkorb mit Sofortpreis)</p>
+                          <p className="text-sm text-slate-500 mt-1">
+                            Erst aktivieren, wenn die Preise unten stimmen. Solange sie aus ist, sehen Kunden den bisherigen Anfrage-Weg.
+                          </p>
+                        </div>
+                        <Switch
+                          checked={!!pricing.cart_enabled}
+                          onCheckedChange={(v) => setPricing((prev) => ({ ...prev, cart_enabled: v }))}
+                          data-testid="cart-enabled-switch"
+                        />
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Produkte & Basispreise</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {(pricing.products || []).map((p, idx) => (
+                          <div key={p.id} className="flex items-center gap-3 p-3 rounded-xl border border-slate-200">
+                            <Input
+                              value={p.name}
+                              onChange={(e) => updateProduct(idx, 'name', e.target.value)}
+                              className="flex-1"
+                              data-testid={`price-name-${p.id}`}
+                            />
+                            <div className="flex items-center gap-1">
+                              <Input
+                                type="number"
+                                step="0.5"
+                                min="0"
+                                value={p.base_price_eur}
+                                onChange={(e) => updateProduct(idx, 'base_price_eur', e.target.value === '' ? '' : parseFloat(e.target.value))}
+                                className="w-28 text-right"
+                                data-testid={`price-value-${p.id}`}
+                              />
+                              <span className="text-sm text-slate-500">€</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Switch
+                                checked={p.active !== false}
+                                onCheckedChange={(v) => updateProduct(idx, 'active', v)}
+                              />
+                              <span className="text-xs text-slate-400 w-10">{p.active !== false ? 'aktiv' : 'aus'}</span>
+                            </div>
+                            <button onClick={() => removeProduct(idx)} className="text-slate-300 hover:text-red-500" aria-label="Produkt entfernen">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                        <Button variant="outline" onClick={addProduct} className="rounded-full" data-testid="add-product-btn">
+                          <Plus className="w-4 h-4 mr-2" /> Produkt hinzufügen
+                        </Button>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Metallfaktoren</CardTitle>
+                        <p className="text-sm text-slate-500 font-normal">
+                          Preis = Basispreis × Faktor. Beispiel: Ring 29 € × Gold 4,0 = 116 €.
+                        </p>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+                          {Object.entries(pricing.metal_factors || {}).map(([sym, factor]) => (
+                            <div key={sym} className="p-3 rounded-xl border border-slate-200 text-center">
+                              <p className="text-sm font-bold text-slate-700 mb-1">{sym}</p>
+                              <Input
+                                type="number"
+                                step="0.1"
+                                min="0.1"
+                                value={factor}
+                                onChange={(e) =>
+                                  setPricing((prev) => ({
+                                    ...prev,
+                                    metal_factors: { ...prev.metal_factors, [sym]: e.target.value === '' ? '' : parseFloat(e.target.value) },
+                                  }))
+                                }
+                                className="text-center"
+                                data-testid={`factor-${sym}`}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Button
+                      onClick={savePricing}
+                      disabled={savingPricing}
+                      className="bg-[#2c7a7b] hover:bg-[#285e61] text-white rounded-full px-8"
+                      data-testid="save-pricing-btn"
+                    >
+                      {savingPricing ? 'Wird gespeichert…' : 'Preise speichern'}
+                    </Button>
+                  </div>
+                )}
+              </TabsContent>
 
               {/* Analytics Tab */}
               <TabsContent value="analytics">
