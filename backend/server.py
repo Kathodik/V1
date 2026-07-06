@@ -1507,6 +1507,72 @@ async def _paypal_access_token():
         _paypal_token_cache["expires_at"] = now + data.get("expires_in", 3000)
         return data["access_token"]
 
+# ─── Stripe Checkout (Karte / Klarna / Apple Pay – ersetzt Shopify) ───
+class StripeSessionRequest(BaseModel):
+    internal_order_id: str
+
+def _stripe_client():
+    key = os.environ.get("STRIPE_SECRET_KEY")
+    if not key:
+        raise HTTPException(status_code=503, detail="Stripe ist noch nicht konfiguriert")
+    import stripe
+    stripe.api_key = key
+    return stripe
+
+@api_router.post("/stripe/checkout-session")
+async def stripe_create_checkout_session(req: StripeSessionRequest):
+    """Create a Stripe Checkout session; the amount always comes from the stored order."""
+    order = await db.configurator_orders.find_one({"id": req.internal_order_id}, {"_id": 0})
+    if not order or order.get("payment_amount_eur", 0) <= 0:
+        raise HTTPException(status_code=404, detail="Auftrag nicht gefunden")
+    if order.get("payment_status") == "paid":
+        raise HTTPException(status_code=400, detail="Auftrag ist bereits bezahlt")
+    stripe = _stripe_client()
+    base = os.environ.get("FRONTEND_URL", "https://kathodik.de")
+    label = ("Kathodik – Galvanisierungsauftrag" if order.get("order_type") == "cart_order"
+             else "Kathodik – Einsende-Pauschale & Versand-Label")
+    session = await asyncio.to_thread(
+        stripe.checkout.Session.create,
+        mode="payment",
+        line_items=[{
+            "price_data": {
+                "currency": "eur",
+                "product_data": {"name": label},
+                "unit_amount": int(round(float(order["payment_amount_eur"]) * 100)),
+            },
+            "quantity": 1,
+        }],
+        customer_email=order.get("email"),
+        metadata={"internal_order_id": order["id"]},
+        success_url=f"{base}/services?stripe_session={{CHECKOUT_SESSION_ID}}&order={order['id']}",
+        cancel_url=f"{base}/services?zahlung=abgebrochen",
+    )
+    await db.configurator_orders.update_one(
+        {"id": order["id"]},
+        {"$set": {"stripe_session_id": session.id, "payment_provider": "stripe"}}
+    )
+    return {"id": session.id, "url": session.url}
+
+@api_router.post("/stripe/verify/{session_id}")
+async def stripe_verify_session(session_id: str):
+    """Verify a checkout session directly against Stripe and mark the order paid."""
+    stripe = _stripe_client()
+    session = await asyncio.to_thread(stripe.checkout.Session.retrieve, session_id)
+    internal_id = (session.get("metadata") or {}).get("internal_order_id")
+    if not internal_id:
+        raise HTTPException(status_code=404, detail="Kein zugehöriger Auftrag")
+    if session.get("payment_status") == "paid":
+        await db.configurator_orders.update_one(
+            {"id": internal_id, "payment_status": {"$ne": "paid"}},
+            {"$set": {
+                "payment_status": "paid",
+                "stripe_payment_intent": session.get("payment_intent"),
+                "paid_at": datetime.now(timezone.utc).isoformat(),
+            }}
+        )
+        return {"paid": True, "order_id": internal_id}
+    return {"paid": False, "order_id": internal_id}
+
 def _paypal_base_url():
     return PAYPAL_API_URLS.get(os.environ.get("PAYPAL_MODE", "sandbox").lower(), PAYPAL_API_URLS["sandbox"])
 
