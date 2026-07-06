@@ -17,7 +17,6 @@ import CoatingPreview from '../components/CoatingPreview';
 import LegalConsent from '../components/LegalConsent';
 import { useCart } from '../contexts/CartContext';
 import PayPalButton from '../components/PayPalButton';
-import { createCheckoutUrl } from '../lib/shopifyCheckout';
 import axios from 'axios';
 
 /* ── Per-element realistic texture config ── */
@@ -364,7 +363,7 @@ const Services = () => {
   const [cartQty, setCartQty] = useState(1);
   const [cartMaterial, setCartMaterial] = useState(null);
   const [showClassicForm, setShowClassicForm] = useState(false);
-  const { cartEnabled, products: cartProducts, materials: cartMaterials, unitPrice, addItem, setIsOpen: setCartOpen } = useCart();
+  const { cartEnabled, products: cartProducts, materials: cartMaterials, unitPrice, addItem, clearCart, setIsOpen: setCartOpen } = useCart();
   const cartPriceOpts = { condition, base_material: cartMaterial, finish: selectedFinish };
   const scrollY = useParallax();
   const detailRef = useRef(null);
@@ -376,6 +375,29 @@ const Services = () => {
         setPauseMessage(res.data.pause_message || '');
       })
       .catch(() => {});
+  }, []);
+
+  // Rueckkehr von der Stripe-Zahlung: Session verifizieren, Warenkorb leeren
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const stripeSession = params.get('stripe_session');
+    if (stripeSession) {
+      axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/stripe/verify/${stripeSession}`)
+        .then((res) => {
+          if (res.data.paid) {
+            toast.success('Zahlung erfolgreich – vielen Dank für Ihre Bestellung! Sie erhalten Ihr Versandlabel per E-Mail.');
+            clearCart();
+          } else {
+            toast.info('Die Zahlung ist noch nicht abgeschlossen.');
+          }
+        })
+        .catch(() => toast.error('Zahlung konnte nicht überprüft werden – bitte kontaktieren Sie uns.'))
+        .finally(() => window.history.replaceState({}, '', '/services'));
+    } else if (params.get('zahlung') === 'abgebrochen') {
+      toast.info('Zahlung abgebrochen – Ihr Warenkorb ist noch da.');
+      window.history.replaceState({}, '', '/services');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleMetalSelect = (metal) => {
@@ -496,28 +518,21 @@ const Services = () => {
     setImages([]);
   };
 
-  // Triggered by the legacy Shopify button (still offered as alternative).
-  const handleShopifyCheckout = async () => {
+  // Karte / Klarna / Apple Pay über Stripe Checkout (ersetzt Shopify).
+  const handleStripeCheckout = async () => {
     if (!acceptingOrders) { setShowSaveForm(true); return; }
     setOrderSubmitting(true);
     try {
       const order = await createBackendOrder();
       if (!order) return;
-      toast.info('Sie werden zur Shopify-Zahlung weitergeleitet…');
-      const finish = selectedMetal.finishes.find(f => f.id === selectedFinish);
-      const checkoutUrl = await createCheckoutUrl({
-        email: orderContact.email,
-        customAttributes: [
-          { key: 'Auftrags-ID', value: order.id },
-          { key: 'Kunde', value: orderContact.name },
-          { key: 'Metall', value: `${selectedMetal.name} – ${finish.name}` },
-          { key: 'Stueckzahl', value: String(quantity) },
-        ],
+      toast.info('Sie werden zur sicheren Zahlung weitergeleitet…');
+      const res = await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/stripe/checkout-session`, {
+        internal_order_id: order.id,
       });
-      window.location.href = checkoutUrl;
+      window.location.href = res.data.url;
     } catch (err) {
       console.error(err);
-      toast.error('Shopify-Checkout fehlgeschlagen');
+      toast.error(err.response?.data?.detail || 'Kartenzahlung konnte nicht gestartet werden');
     } finally {
       setOrderSubmitting(false);
     }
@@ -535,8 +550,8 @@ const Services = () => {
       setShowSaveForm(true);
       return;
     }
-    // Active path: prefer PayPal (renders own button); user clicks Shopify CTA directly.
-    await handleShopifyCheckout();
+    // Active path: prefer PayPal (renders own button); user clicks Stripe CTA directly.
+    await handleStripeCheckout();
   };
 
   const handleSaveRequest = async (e) => {
@@ -1453,14 +1468,14 @@ const Services = () => {
                             <div className="flex-1 h-px bg-slate-200" />
                           </div>
 
-                          {/* Shopify (Karte / Klarna / Shop Pay) */}
+                          {/* Stripe (Karte / Klarna / Apple Pay) */}
                           <Button
                             type="button"
-                            onClick={handleShopifyCheckout}
+                            onClick={handleStripeCheckout}
                             disabled={orderSubmitting || !orderAgbAccepted || images.length === 0 || !quantity || !condition || !orderContact.name || !orderContact.email}
                             variant="outline"
                             className="w-full border-2 border-slate-300 hover:border-[#2c7a7b] text-slate-700 py-5 text-sm rounded-full disabled:opacity-50"
-                            data-testid="shopify-checkout-btn"
+                            data-testid="stripe-checkout-btn"
                           >
                             {orderSubmitting ? 'Wird vorbereitet…' : 'Mit Karte / Klarna / Apple Pay bezahlen'}
                           </Button>

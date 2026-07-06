@@ -18,6 +18,22 @@ const CartDrawer = () => {
   const { items, total, updateQuantity, removeItem, clearCart, isOpen, setIsOpen } = useCart();
   const [contact, setContact] = useState({ name: '', email: '', phone: '' });
   const [agb, setAgb] = useState(false);
+  const [stripeSubmitting, setStripeSubmitting] = useState(false);
+
+  const handleStripeCheckout = async () => {
+    setStripeSubmitting(true);
+    try {
+      const order = await createCartOrder();
+      if (!order) return;
+      const res = await axios.post(`${API}/stripe/checkout-session`, { internal_order_id: order.id });
+      window.location.href = res.data.url;
+    } catch (err) {
+      console.error('Stripe checkout failed:', err);
+      toast.error(err.response?.data?.detail || 'Kartenzahlung konnte nicht gestartet werden');
+    } finally {
+      setStripeSubmitting(false);
+    }
+  };
 
   const contactComplete = contact.name.trim() && contact.email.trim();
   const readyToPay = items.length > 0 && contactComplete && agb;
@@ -142,6 +158,21 @@ const CartDrawer = () => {
                   setIsOpen(false);
                 }}
               />
+              <div className="flex items-center gap-3 py-2">
+                <div className="flex-1 h-px bg-slate-200" />
+                <span className="text-[10px] font-bold tracking-[0.2em] uppercase text-slate-400">oder</span>
+                <div className="flex-1 h-px bg-slate-200" />
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={!readyToPay || stripeSubmitting}
+                onClick={handleStripeCheckout}
+                className="w-full border-2 border-slate-300 hover:border-[#2c7a7b] text-slate-700 py-5 text-sm rounded-full disabled:opacity-50"
+                data-testid="stripe-checkout-btn"
+              >
+                {stripeSubmitting ? 'Wird vorbereitet…' : 'Mit Karte / Klarna / Apple Pay zahlen'}
+              </Button>
               {!readyToPay && (
                 <p className="text-xs text-slate-400 text-center mt-2">
                   Bitte Kontaktdaten ausfüllen und den rechtlichen Hinweisen zustimmen.
