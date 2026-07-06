@@ -73,9 +73,34 @@ class ContactConfirmRequest(BaseModel):
     haftung_accepted: bool
     widerruf_accepted: bool
 
+# Branded email layout: every mail gets the same clean Kathodik design.
+def _email_layout(inner_html: str) -> str:
+    year = datetime.now(timezone.utc).year
+    return f"""
+    <div style="background:#f1f5f9;padding:32px 16px;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+      <div style="max-width:560px;margin:0 auto;">
+        <div style="text-align:center;padding-bottom:20px;">
+          <span style="font-size:22px;font-weight:800;color:#1e293b;letter-spacing:-0.5px;">Kathodik</span><br>
+          <span style="font-size:10px;font-weight:700;letter-spacing:3px;color:#2c7a7b;text-transform:uppercase;">Galvanotechnik</span>
+        </div>
+        <div style="background:#ffffff;border-radius:16px;border:1px solid #e2e8f0;overflow:hidden;">
+          <div style="height:5px;background:#2c7a7b;"></div>
+          <div style="padding:32px 28px;color:#334155;font-size:15px;line-height:1.6;">
+            {inner_html}
+          </div>
+        </div>
+        <div style="text-align:center;padding-top:20px;color:#94a3b8;font-size:12px;line-height:1.6;">
+          Kathodik – Galvanotechnik · <a href="https://kathodik.de" style="color:#2c7a7b;text-decoration:none;">kathodik.de</a><br>
+          service@kathodik.com · © {year} Kathodik
+        </div>
+      </div>
+    </div>
+    """
+
 # Resend email helper
-async def send_email_via_resend(to_email: str, subject: str, html_content: str):
-    """Send email using Resend API (non-blocking). Falls back to verified default sender."""
+async def send_email_via_resend(to_email: str, subject: str, html_content: str, attachments: list = None):
+    """Send email using Resend API (non-blocking). Falls back to verified default sender.
+    attachments: optional list of {"filename": str, "content": base64-str}."""
     resend_key = os.environ.get('RESEND_API_KEY')
     sender = os.environ.get('SENDER_EMAIL', 'onboarding@resend.dev')
     if not resend_key:
@@ -88,8 +113,10 @@ async def send_email_via_resend(to_email: str, subject: str, html_content: str):
             "from": sender,
             "to": [to_email],
             "subject": subject,
-            "html": html_content,
+            "html": _email_layout(html_content),
         }
+        if attachments:
+            params["attachments"] = attachments
         result = await asyncio.to_thread(resend.Emails.send, params)
         logger.info(f"Email sent OK to {to_email} via {sender} - id={result.get('id') if isinstance(result, dict) else result}")
         return result
@@ -105,8 +132,10 @@ async def send_email_via_resend(to_email: str, subject: str, html_content: str):
                     "from": "Kathodik <onboarding@resend.dev>",
                     "to": [to_email],
                     "subject": f"[Fallback] {subject}",
-                    "html": html_content,
+                    "html": _email_layout(html_content),
                 }
+                if attachments:
+                    fallback_params["attachments"] = attachments
                 result = await asyncio.to_thread(resend.Emails.send, fallback_params)
                 logger.info(f"Fallback email sent to {to_email}")
                 return result
@@ -781,6 +810,57 @@ async def create_cart_order(request: CartOrderRequest):
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     await db.configurator_orders.insert_one(doc)
+
+    rows = "".join(
+        f"""<tr>
+          <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;">{l['product_name']}<br>
+              <span style="color:#94a3b8;font-size:12px;">{l['metal']}{' · ' + l['finish'] if l['finish'] else ''}</span></td>
+          <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;text-align:center;">{l['quantity']}×</td>
+          <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;text-align:right;white-space:nowrap;">{l['line_total_eur']:.2f} €</td>
+        </tr>"""
+        for l in lines
+    )
+    items_table = f"""
+    <table style="width:100%;border-collapse:collapse;font-size:14px;margin:16px 0;">
+      <tr>
+        <th style="text-align:left;padding:8px 12px;color:#64748b;font-size:12px;text-transform:uppercase;letter-spacing:1px;">Position</th>
+        <th style="text-align:center;padding:8px 12px;color:#64748b;font-size:12px;text-transform:uppercase;letter-spacing:1px;">Menge</th>
+        <th style="text-align:right;padding:8px 12px;color:#64748b;font-size:12px;text-transform:uppercase;letter-spacing:1px;">Preis</th>
+      </tr>
+      {rows}
+      <tr>
+        <td colspan="2" style="padding:12px;font-weight:bold;">Gesamtsumme</td>
+        <td style="padding:12px;text-align:right;font-weight:bold;white-space:nowrap;">{total:.2f} €</td>
+      </tr>
+    </table>
+    """
+
+    await send_email_via_resend(
+        to_email=request.email,
+        subject="Kathodik – Ihre Bestellung ist eingegangen",
+        html_content=f"""
+        <h2 style="margin:0 0 8px;color:#1e293b;">Vielen Dank für Ihre Bestellung, {request.name}!</h2>
+        <p>Wir haben Ihre Bestellung erhalten. Nach Zahlungseingang senden wir Ihnen Ihr
+        vorfrankiertes Versandlabel per E-Mail – damit schicken Sie uns Ihre Stücke bequem zu.</p>
+        {items_table}
+        <p style="color:#64748b;font-size:13px;">Auftragsnummer: {order_id}<br>
+        Die finale Annahme erfolgt nach Prüfung der eingesandten Teile.</p>
+        <p>Mit freundlichen Grüßen<br><strong>Ihr Kathodik-Team</strong></p>
+        """
+    )
+    await send_email_via_resend(
+        to_email="service@kathodik.com",
+        subject=f"Neue Warenkorb-Bestellung von {request.name} ({total:.2f} €)",
+        html_content=f"""
+        <h2 style="margin:0 0 8px;color:#1e293b;">Neue Warenkorb-Bestellung</h2>
+        <p><strong>Name:</strong> {request.name}<br>
+        <strong>E-Mail:</strong> {request.email}<br>
+        <strong>Telefon:</strong> {request.phone or 'Nicht angegeben'}</p>
+        {items_table}
+        <p style="color:#64748b;font-size:13px;">Auftragsnummer: {order_id} · Zahlung: ausstehend (PayPal)</p>
+        """
+    )
+
     return {"id": order_id, "total_eur": total, "items": lines}
 
 # ─── Waitlist Endpoints (Notification Signup) ───
@@ -1024,10 +1104,29 @@ async def create_configurator_order(request: ConfiguratorOrderRequest):
     }
     condition_label = condition_labels.get(request.condition, request.condition or "Nicht angegeben")
     
+    # Bauteilfotos als echte Anhänge für die Admin-Mail aufbereiten
+    def _data_url_to_attachment(data_url: str, filename: str):
+        if not data_url:
+            return None
+        b64 = data_url.split(",", 1)[1] if data_url.startswith("data:") else data_url
+        return {"filename": filename, "content": b64}
+
+    admin_attachments = []
+    if request.images:
+        for i, img in enumerate(request.images):
+            att = _data_url_to_attachment(img, f"bauteilfoto_{i+1}.jpg")
+            if att:
+                admin_attachments.append(att)
+    if request.reference_image:
+        att = _data_url_to_attachment(request.reference_image, "referenzbild.png")
+        if att:
+            admin_attachments.append(att)
+
     # Notify admin
     await send_email_via_resend(
         to_email="service@kathodik.com",
         subject=f"Neuer Auftrag ({type_label}) von {request.name}",
+        attachments=admin_attachments or None,
         html_content=f"""
         <h2>Neuer Auftrag</h2>
         <p><strong>Auftragstyp:</strong> {type_label}</p>
@@ -1051,9 +1150,9 @@ async def create_configurator_order(request: ConfiguratorOrderRequest):
     # Confirm to customer
     await send_email_via_resend(
         to_email=request.email,
-        subject="Kathodik - Ihr 3D-Konfigurator Auftrag",
+        subject=f"Kathodik – Ihr Auftrag ist eingegangen ({type_label})",
         html_content=f"""
-        <h2>Vielen Dank für Ihren Auftrag!</h2>
+        <h2 style="margin:0 0 8px;color:#1e293b;">Vielen Dank für Ihren Auftrag!</h2>
         <p>Wir haben Ihren Auftrag erhalten und werden uns zeitnah bei Ihnen melden.</p>
         <p><strong>Auftragstyp:</strong> {type_label}</p>
         <p><strong>Auftrags-ID:</strong> {order_id}</p>
@@ -1065,6 +1164,16 @@ async def create_configurator_order(request: ConfiguratorOrderRequest):
     )
     
     return {"id": order_id, "message": "Auftrag erfolgreich erstellt", "order_type": request.order_type}
+
+@api_router.get("/configurator/orders/{order_id}/files")
+async def get_configurator_order_files(order_id: str, current_user: User = Depends(get_current_user)):
+    """Get the stored files/images of an order (admin only)."""
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    files = await db.configurator_files.find(
+        {"order_id": order_id}, {"_id": 0}
+    ).to_list(50)
+    return {"order_id": order_id, "files": files}
 
 @api_router.get("/configurator/orders")
 async def get_configurator_orders(current_user: User = Depends(get_current_user)):
