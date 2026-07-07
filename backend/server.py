@@ -373,8 +373,52 @@ async def get_contact_messages(current_user: User = Depends(get_current_user)):
     """Get all contact messages (admin only)"""
     if not current_user.is_admin:
         raise HTTPException(status_code=403, detail="Admin access required")
-    messages = await db.contact_messages.find({}, {"_id": 0}).sort("created_at", -1).to_list(100)
+    messages = await db.contact_messages.find({}, {"_id": 0, "confirmation_token": 0}).sort("created_at", -1).to_list(100)
     return messages
+
+class ContactStatusUpdate(BaseModel):
+    status: str  # accepted | declined
+
+@api_router.put("/contact/messages/{contact_id}/status")
+async def update_contact_status(contact_id: str, update: ContactStatusUpdate, current_user: User = Depends(get_current_user)):
+    """Accept or decline a contact inquiry (admin only); notifies the customer."""
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    if update.status not in ("accepted", "declined"):
+        raise HTTPException(status_code=400, detail="Ungültiger Status")
+    msg = await db.contact_messages.find_one({"id": contact_id}, {"_id": 0})
+    if not msg:
+        raise HTTPException(status_code=404, detail="Anfrage nicht gefunden")
+    await db.contact_messages.update_one(
+        {"id": contact_id},
+        {"$set": {"status": update.status, "status_updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    if update.status == "accepted":
+        await send_email_via_resend(
+            to_email=msg["email"],
+            subject="Kathodik – Ihre Anfrage wurde angenommen ✔",
+            html_content=f"""
+            <h2 style="margin:0 0 8px;color:#1e293b;">Gute Nachrichten, {msg['name']}!</h2>
+            <p>Wir haben Ihre Anfrage geprüft und <strong>angenommen</strong>.
+            Wir melden uns in Kürze mit den nächsten Schritten bei Ihnen.</p>
+            <p style="color:#64748b;font-size:13px;">Ihre Anfrage: „{(msg.get('message') or '')[:200]}"</p>
+            <p>Mit freundlichen Grüßen<br><strong>Ihr Kathodik-Team</strong></p>
+            """
+        )
+    else:
+        await send_email_via_resend(
+            to_email=msg["email"],
+            subject="Kathodik – Rückmeldung zu Ihrer Anfrage",
+            html_content=f"""
+            <h2 style="margin:0 0 8px;color:#1e293b;">Rückmeldung zu Ihrer Anfrage</h2>
+            <p>Vielen Dank für Ihre Anfrage. Leider können wir sie in dieser Form nicht übernehmen.</p>
+            <p>Gern finden wir gemeinsam eine Alternative – antworten Sie einfach auf diese E-Mail
+            oder rufen Sie uns an.</p>
+            <p style="color:#64748b;font-size:13px;">Ihre Anfrage: „{(msg.get('message') or '')[:200]}"</p>
+            <p>Mit freundlichen Grüßen<br><strong>Ihr Kathodik-Team</strong></p>
+            """
+        )
+    return {"id": contact_id, "status": update.status}
 
 # 3D Model endpoints
 @api_router.post("/3d-models", response_model=ThreeDModel)

@@ -60,6 +60,19 @@ const AdminPortal = () => {
     }
   };
 
+  const updateContactStatus = async (contactId, status) => {
+    try {
+      const headers = { Authorization: `Bearer ${token}` };
+      await axios.put(`${API}/contact/messages/${contactId}/status`, { status }, { headers });
+      setContactMessages((prev) => prev.map((m) => (m.id === contactId ? { ...m, status } : m)));
+      toast.success(status === 'accepted'
+        ? 'Anfrage angenommen – der Kunde wurde per E-Mail informiert.'
+        : 'Anfrage abgelehnt – der Kunde wurde per E-Mail informiert.');
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Status konnte nicht geändert werden');
+    }
+  };
+
   const loadOrderFiles = async (orderId) => {
     if (orderFiles[orderId]) {
       setOrderFiles((prev) => { const n = { ...prev }; delete n[orderId]; return n; });
@@ -858,6 +871,8 @@ const AdminPortal = () => {
                     contactMessages.map((msg, i) => {
                       const isConfirmed = msg.status === 'confirmed';
                       const isPending = msg.status === 'pending_confirmation';
+                      const isAccepted = msg.status === 'accepted';
+                      const isDeclined = msg.status === 'declined';
                       return (
                         <Card key={i} className="bg-white border-slate-200">
                           <CardContent className="p-4">
@@ -872,7 +887,17 @@ const AdminPortal = () => {
                                   )}
                                   {isPending && (
                                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[11px] font-semibold">
-                                      ⧖ Wartet auf Bestätigung
+                                      ⧖ Wartet auf Kundenbestätigung
+                                    </span>
+                                  )}
+                                  {isAccepted && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[11px] font-semibold">
+                                      ✔ Angenommen
+                                    </span>
+                                  )}
+                                  {isDeclined && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-[11px] font-semibold">
+                                      ✕ Abgelehnt
                                     </span>
                                   )}
                                 </div>
@@ -887,6 +912,24 @@ const AdminPortal = () => {
                               </div>
                               <p className="text-xs text-slate-400 whitespace-nowrap">{new Date(msg.created_at).toLocaleDateString('de-DE')}</p>
                             </div>
+                            {!isAccepted && !isDeclined && (
+                              <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-slate-100">
+                                <Button size="sm" onClick={() => updateContactStatus(msg.id, 'accepted')} className="bg-[#2c7a7b] hover:bg-[#285e61] text-white rounded-full px-4 h-8 text-xs" data-testid={`accept-contact-${msg.id}`}>
+                                  ✔ Annehmen
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={() => updateContactStatus(msg.id, 'declined')} className="border-red-200 text-red-600 hover:bg-red-50 rounded-full px-4 h-8 text-xs" data-testid={`decline-contact-${msg.id}`}>
+                                  ✕ Ablehnen
+                                </Button>
+                                <span className="text-[11px] text-slate-400 self-center ml-auto">Entscheidung benachrichtigt den Kunden per E-Mail</span>
+                              </div>
+                            )}
+                            {isDeclined && (
+                              <div className="flex gap-2 mt-3 pt-3 border-t border-slate-100">
+                                <Button size="sm" variant="outline" onClick={() => updateContactStatus(msg.id, 'accepted')} className="rounded-full px-4 h-8 text-xs">
+                                  Doch annehmen
+                                </Button>
+                              </div>
+                            )}
                           </CardContent>
                         </Card>
                       );
