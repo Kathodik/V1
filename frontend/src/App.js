@@ -1,5 +1,5 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { Toaster } from './components/ui/sonner';
 import { AuthProvider } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
@@ -25,11 +25,35 @@ import BestaetigungAuftrag from './pages/BestaetigungAuftrag';
 import useAnalytics from './hooks/useAnalytics';
 import './App.css';
 
+const PAGE_TITLES = {
+  '/': 'Kathodik – Galvanotechnik & Lohngalvanisierung',
+  '/services': 'Leistungen: Lohngalvanik, Vor-Ort-Galvanik & 3D-Konfigurator | Kathodik',
+  '/3d-configurator': '3D-Konfigurator – Wunschteil beschreiben, KI modelliert | Kathodik',
+  '/references': 'Referenzen & Arbeiten | Kathodik Galvanotechnik',
+  '/contact': 'Kontakt | Kathodik Galvanotechnik',
+  '/imprint': 'Impressum | Kathodik',
+  '/agb': 'AGB | Kathodik',
+  '/datenschutz': 'Datenschutz | Kathodik',
+  '/widerruf': 'Widerruf | Kathodik',
+  '/portal': 'Kundenportal | Kathodik',
+  '/portal/login': 'Anmelden | Kathodik',
+  '/admin': 'Verwaltung | Kathodik',
+};
+
+function PageTitleManager() {
+  const location = useLocation();
+  useEffect(() => {
+    document.title = PAGE_TITLES[location.pathname] || 'Kathodik – Galvanotechnik & Lohngalvanisierung';
+  }, [location.pathname]);
+  return null;
+}
+
 function AppContent() {
   useAnalytics();
   return (
     <div className="App min-h-screen bg-white">
       <ScrollToTop />
+      <PageTitleManager />
       <Header />
       <main className="pt-20">
         <Routes>
