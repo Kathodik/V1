@@ -863,9 +863,13 @@ class ShopProductInput(BaseModel):
     price_eur: float = Field(gt=0)
     engraving_available: bool = False
     engraving_price_eur: float = Field(default=0, ge=0)
-    images: List[str] = []          # data-URLs, clientseitig verkleinert
+    images: List[str] = []          # data-URLs, clientseitig verkleinert (Referenzbilder)
+    # Konfigurierbare Optionsgruppen, z. B.
+    # [{"name": "Beschichtung", "choices": [{"label": "Kupfer", "surcharge_eur": 0}, {"label": "Silber", "surcharge_eur": 25}]}]
+    options: List[dict] = []
+    lead_time: Optional[str] = None  # z. B. "ca. 2–3 Wochen"
     active: bool = True
-    sold: bool = False
+    sold: bool = False               # hier: "pausiert" – Produkt vorübergehend nicht bestellbar
 
 @api_router.get("/shop/settings")
 async def get_shop_settings():
@@ -890,12 +894,28 @@ async def get_all_shop_products(current_user: User = Depends(get_current_user)):
         raise HTTPException(status_code=403, detail="Admin access required")
     return await db.shop_products.find({}, {"_id": 0}).sort("created_at", -1).to_list(200)
 
+def _validate_shop_options(options: List[dict]):
+    for group in options:
+        if not group.get("name"):
+            raise HTTPException(status_code=400, detail="Optionsgruppe braucht einen Namen")
+        choices = group.get("choices") or []
+        if not choices:
+            raise HTTPException(status_code=400, detail=f"Optionsgruppe {group['name']} braucht Auswahlmöglichkeiten")
+        for c in choices:
+            if not c.get("label"):
+                raise HTTPException(status_code=400, detail=f"Auswahl in {group['name']} braucht eine Bezeichnung")
+            try:
+                c["surcharge_eur"] = round(float(c.get("surcharge_eur", 0)), 2)
+            except (TypeError, ValueError):
+                raise HTTPException(status_code=400, detail=f"Ungültiger Aufpreis bei {c.get('label')}")
+
 @api_router.post("/shop/products")
 async def create_shop_product(product: ShopProductInput, current_user: User = Depends(get_current_user)):
     if not current_user.is_admin:
         raise HTTPException(status_code=403, detail="Admin access required")
     if len(product.images) > 6:
         raise HTTPException(status_code=400, detail="Maximal 6 Bilder pro Produkt")
+    _validate_shop_options(product.options)
     doc = {"id": str(uuid.uuid4()), **product.dict(), "created_at": datetime.now(timezone.utc).isoformat()}
     await db.shop_products.insert_one({**doc})
     doc.pop("_id", None)
@@ -907,6 +927,7 @@ async def update_shop_product(product_id: str, product: ShopProductInput, curren
         raise HTTPException(status_code=403, detail="Admin access required")
     if len(product.images) > 6:
         raise HTTPException(status_code=400, detail="Maximal 6 Bilder pro Produkt")
+    _validate_shop_options(product.options)
     result = await db.shop_products.update_one({"id": product_id}, {"$set": product.dict()})
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Produkt nicht gefunden")
@@ -928,6 +949,7 @@ class CartItemRequest(BaseModel):
     condition: Optional[str] = None     # neu | leicht | stark
     base_material: Optional[str] = None # Material-ID, z. B. "messing"
     engraving_text: Optional[str] = None  # nur shop
+    selected_options: Optional[dict] = None  # nur shop: {"Beschichtung": "Silber", ...}
     quantity: int = Field(ge=1, le=500)
 
 class CartOrderRequest(BaseModel):
@@ -951,7 +973,6 @@ async def create_cart_order(request: CartOrderRequest):
 
     lines = []
     total = 0.0
-    sold_ids = []
     has_shop_items = False
     for item in request.items:
         if item.item_type == "shop":
@@ -959,22 +980,37 @@ async def create_cart_order(request: CartOrderRequest):
             if not shop_product or not shop_product.get("active", True):
                 raise HTTPException(status_code=400, detail="Produkt nicht gefunden")
             if shop_product.get("sold"):
-                raise HTTPException(status_code=400, detail=f"{shop_product['name']} ist leider bereits verkauft")
+                raise HTTPException(status_code=400, detail=f"{shop_product['name']} ist derzeit nicht bestellbar")
+            if item.quantity > 20:
+                raise HTTPException(status_code=400, detail="Maximal 20 Stück pro Position")
             engraving = (item.engraving_text or "").strip()[:120]
             if engraving and not shop_product.get("engraving_available"):
                 engraving = ""
-            unit = round(float(shop_product["price_eur"]) + (float(shop_product.get("engraving_price_eur", 0)) if engraving else 0), 2)
-            total = round(total + unit, 2)
+            unit = float(shop_product["price_eur"])
+            chosen = {}
+            selected = item.selected_options or {}
+            for group in shop_product.get("options", []):
+                sel_label = selected.get(group["name"])
+                choice = next((c for c in group.get("choices", []) if c["label"] == sel_label), None)
+                if choice is None:
+                    choice = (group.get("choices") or [{}])[0]
+                chosen[group["name"]] = choice.get("label")
+                unit += float(choice.get("surcharge_eur", 0))
+            if engraving:
+                unit += float(shop_product.get("engraving_price_eur", 0))
+            unit = round(unit, 2)
+            line_total = round(unit * item.quantity, 2)
+            total = round(total + line_total, 2)
             has_shop_items = True
-            sold_ids.append(item.product_id)
             lines.append({
                 "product_id": item.product_id,
                 "item_type": "shop",
                 "product_name": shop_product["name"],
                 "engraving_text": engraving or None,
-                "quantity": 1,
+                "selected_options": chosen or None,
+                "quantity": item.quantity,
                 "unit_price_eur": unit,
-                "line_total_eur": unit,
+                "line_total_eur": line_total,
             })
             continue
         product = products.get(item.product_id)
@@ -1025,13 +1061,11 @@ async def create_cart_order(request: CartOrderRequest):
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     await db.configurator_orders.insert_one(doc)
-    if sold_ids:
-        await db.shop_products.update_many({"id": {"$in": sold_ids}}, {"$set": {"sold": True}})
 
     rows = "".join(
         f"""<tr>
           <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;">{l['product_name']}<br>
-              <span style="color:#94a3b8;font-size:12px;">{l.get('metal') or 'Handgefertigtes Unikat'}{' · ' + (l.get('finish_name') or l['finish']) if l.get('finish') else ''}{' · ' + l['base_material'] if l.get('base_material') else ''}{' · Zustand: ' + l['condition'] if l.get('condition') else ''}{' · Gravur: „' + l['engraving_text'] + '"' if l.get('engraving_text') else ''}</span></td>
+              <span style="color:#94a3b8;font-size:12px;">{l.get('metal') or 'Handgefertigtes Unikat'}{' · ' + (l.get('finish_name') or l['finish']) if l.get('finish') else ''}{' · ' + l['base_material'] if l.get('base_material') else ''}{' · Zustand: ' + l['condition'] if l.get('condition') else ''}{' · ' + ' · '.join(f'{k}: {v}' for k, v in (l.get('selected_options') or {}).items()) if l.get('selected_options') else ''}{' · Gravur: „' + l['engraving_text'] + '"' if l.get('engraving_text') else ''}</span></td>
           <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;text-align:center;">{l['quantity']}×</td>
           <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;text-align:right;white-space:nowrap;">{l['line_total_eur']:.2f} €</td>
         </tr>"""

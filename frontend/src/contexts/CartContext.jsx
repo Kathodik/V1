@@ -9,7 +9,7 @@ const CartContext = createContext(null);
 export const useCart = () => useContext(CartContext);
 
 // Eine Position ist eindeutig über Typ + Produkt + Metall + Finish + Zustand + Material + Gravur
-const itemKey = (i) => `${i.item_type || 'coating'}|${i.product_id}|${i.metal || ''}|${i.finish || ''}|${i.condition || ''}|${i.base_material || ''}|${i.engraving_text || ''}`;
+const itemKey = (i) => `${i.item_type || 'coating'}|${i.product_id}|${i.metal || ''}|${i.finish || ''}|${i.condition || ''}|${i.base_material || ''}|${i.engraving_text || ''}|${JSON.stringify(i.selected_options || {})}`;
 
 export const CartProvider = ({ children }) => {
   const [pricing, setPricing] = useState(null);
@@ -66,18 +66,18 @@ export const CartProvider = ({ children }) => {
     return Math.round(product.base_price_eur * factor * condFactor * matFactor * finFactor * 100) / 100;
   };
 
-  const addItem = ({ item_type = 'coating', product_id, metal, metal_name, finish, finish_name, condition, base_material, engraving_text, quantity }) => {
+  const addItem = ({ item_type = 'coating', product_id, metal, metal_name, finish, finish_name, condition, base_material, engraving_text, selected_options, quantity }) => {
     setItems((prev) => {
-      const entry = { item_type, product_id, metal, metal_name, finish, finish_name, condition, base_material, engraving_text, quantity };
+      const entry = { item_type, product_id, metal, metal_name, finish, finish_name, condition, base_material, engraving_text, selected_options, quantity };
       const key = itemKey(entry);
+      const maxQty = item_type === 'shop' ? 20 : 500;
       const existing = prev.find((i) => itemKey(i) === key);
       if (existing) {
-        if (item_type === 'shop') return prev; // Unikat: bleibt bei 1
         return prev.map((i) =>
-          itemKey(i) === key ? { ...i, quantity: Math.min(500, i.quantity + quantity) } : i
+          itemKey(i) === key ? { ...i, quantity: Math.min(maxQty, i.quantity + quantity) } : i
         );
       }
-      return [...prev, item_type === 'shop' ? { ...entry, quantity: 1 } : entry];
+      return [...prev, entry];
     });
   };
 
@@ -95,17 +95,23 @@ export const CartProvider = ({ children }) => {
   const enriched = items.map((i) => {
     if (i.item_type === 'shop') {
       const sp = shopProducts.find((p) => p.id === i.product_id);
-      const unit = sp
-        ? Math.round((sp.price_eur + (i.engraving_text ? (sp.engraving_price_eur || 0) : 0)) * 100) / 100
-        : null;
+      let unit = null;
+      if (sp) {
+        unit = sp.price_eur;
+        (sp.options || []).forEach((g) => {
+          const c = (g.choices || []).find((ch) => ch.label === (i.selected_options || {})[g.name]) || g.choices?.[0];
+          unit += Number(c?.surcharge_eur || 0);
+        });
+        if (i.engraving_text) unit += Number(sp.engraving_price_eur || 0);
+        unit = Math.round(unit * 100) / 100;
+      }
       return {
         ...i,
         key: itemKey(i),
         product_name: sp?.name || 'Shop-Produkt',
         image: sp?.images?.[0],
-        sold: sp ? !!sp.sold : false,
         unit_price_eur: unit,
-        line_total_eur: unit,
+        line_total_eur: unit != null ? Math.round(unit * i.quantity * 100) / 100 : null,
       };
     }
     const product = products.find((p) => p.id === i.product_id);

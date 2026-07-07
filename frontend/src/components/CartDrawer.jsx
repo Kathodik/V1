@@ -53,6 +53,7 @@ const CartDrawer = () => {
           condition: i.condition || null,
           base_material: i.base_material || null,
           engraving_text: i.engraving_text || null,
+          selected_options: i.selected_options || null,
           quantity: i.quantity,
         })),
       });
@@ -89,7 +90,7 @@ const CartDrawer = () => {
                     <p className="text-sm font-semibold text-slate-800 truncate">{item.product_name}</p>
                     <p className="text-xs text-slate-500 truncate">
                       {item.item_type === 'shop' ? (
-                        <>Handgefertigtes Unikat{item.engraving_text ? ` · Gravur: „${item.engraving_text}“` : ''}</>
+                        <>{Object.values(item.selected_options || {}).join(' · ') || 'Handgefertigt'}{item.engraving_text ? ` · Gravur: „${item.engraving_text}“` : ''}</>
                       ) : (
                         <>
                           {item.metal_name || item.metal}
@@ -99,9 +100,8 @@ const CartDrawer = () => {
                         </>
                       )}
                     </p>
-                    <p className="text-xs text-slate-400 mt-0.5">{eur(item.unit_price_eur)}{item.item_type === 'shop' ? '' : ' / Stück'}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">{eur(item.unit_price_eur)} / Stück</p>
                   </div>
-                  {item.item_type !== 'shop' && (
                   <div className="flex items-center gap-1.5">
                     <button
                       className="w-7 h-7 rounded-full border border-slate-200 flex items-center justify-center hover:border-[#2c7a7b] text-slate-600"
@@ -119,7 +119,6 @@ const CartDrawer = () => {
                       <Plus className="w-3.5 h-3.5" />
                     </button>
                   </div>
-                  )}
                   <div className="text-right">
                     <p className="text-sm font-bold text-slate-800 whitespace-nowrap">{eur(item.line_total_eur)}</p>
                     <button
@@ -151,7 +150,7 @@ const CartDrawer = () => {
               </div>
             </div>
             <p className="text-[11px] text-slate-400 -mt-3">
-              {hasShopItems ? 'Unikate werden sicher verpackt versendet' : 'inkl. vorfrankiertem Versandlabel · finale Annahme nach Wareneingang'}
+              {hasShopItems ? 'Handgefertigt auf Bestellung · sicher verpackt versendet' : 'inkl. vorfrankiertem Versandlabel · finale Annahme nach Wareneingang'}
             </p>
 
             <div className="space-y-3 p-4 bg-slate-50 rounded-xl border border-slate-200">
