@@ -106,11 +106,6 @@ code {
     }
 }
 
-/* Hide platform watermark badge */
-body > div:not(#root) {
-  display: none !important;
-}
-
 #emergent-badge,
 a#emergent-badge,
 body > a#emergent-badge,

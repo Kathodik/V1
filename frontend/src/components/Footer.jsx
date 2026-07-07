@@ -32,6 +32,7 @@ const Footer = () => {
             <ul className="space-y-3">
               {[
                 { name: 'Leistungen', href: '/services' },
+                { name: 'Shop', href: '/shop' },
                 { name: '3D Konfigurator', href: '/3d-configurator' },
                 { name: 'Referenzen', href: '/references' },
                 { name: 'Kontakt', href: '/contact' },

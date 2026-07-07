@@ -847,13 +847,87 @@ async def update_pricing(update: PricingUpdate, current_user: User = Depends(get
     await db.settings.update_one({"key": "pricing"}, {"$set": doc}, upsert=True)
     return await _get_pricing()
 
+# ─── Shop (handgefertigte Unikate, z. B. Kupferrosen) ───
+DEFAULT_SHOP_SETTINGS = {"key": "shop_settings", "shipping_fee_eur": 5.90}
+
+async def _get_shop_settings():
+    doc = await db.settings.find_one({"key": "shop_settings"}, {"_id": 0})
+    return doc or DEFAULT_SHOP_SETTINGS
+
+class ShopSettingsUpdate(BaseModel):
+    shipping_fee_eur: float = Field(ge=0)
+
+class ShopProductInput(BaseModel):
+    name: str
+    description: Optional[str] = None
+    price_eur: float = Field(gt=0)
+    engraving_available: bool = False
+    engraving_price_eur: float = Field(default=0, ge=0)
+    images: List[str] = []          # data-URLs, clientseitig verkleinert
+    active: bool = True
+    sold: bool = False
+
+@api_router.get("/shop/settings")
+async def get_shop_settings():
+    return await _get_shop_settings()
+
+@api_router.put("/shop/settings")
+async def update_shop_settings(update: ShopSettingsUpdate, current_user: User = Depends(get_current_user)):
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    doc = {"key": "shop_settings", "shipping_fee_eur": round(update.shipping_fee_eur, 2)}
+    await db.settings.update_one({"key": "shop_settings"}, {"$set": doc}, upsert=True)
+    return doc
+
+@api_router.get("/shop/products")
+async def get_shop_products():
+    """Public: aktive Shop-Produkte (verkaufte Stücke bleiben sichtbar, markiert)."""
+    return await db.shop_products.find({"active": True}, {"_id": 0}).sort("created_at", -1).to_list(100)
+
+@api_router.get("/shop/products/all")
+async def get_all_shop_products(current_user: User = Depends(get_current_user)):
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return await db.shop_products.find({}, {"_id": 0}).sort("created_at", -1).to_list(200)
+
+@api_router.post("/shop/products")
+async def create_shop_product(product: ShopProductInput, current_user: User = Depends(get_current_user)):
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    if len(product.images) > 6:
+        raise HTTPException(status_code=400, detail="Maximal 6 Bilder pro Produkt")
+    doc = {"id": str(uuid.uuid4()), **product.dict(), "created_at": datetime.now(timezone.utc).isoformat()}
+    await db.shop_products.insert_one({**doc})
+    doc.pop("_id", None)
+    return doc
+
+@api_router.put("/shop/products/{product_id}")
+async def update_shop_product(product_id: str, product: ShopProductInput, current_user: User = Depends(get_current_user)):
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    if len(product.images) > 6:
+        raise HTTPException(status_code=400, detail="Maximal 6 Bilder pro Produkt")
+    result = await db.shop_products.update_one({"id": product_id}, {"$set": product.dict()})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Produkt nicht gefunden")
+    return await db.shop_products.find_one({"id": product_id}, {"_id": 0})
+
+@api_router.delete("/shop/products/{product_id}")
+async def delete_shop_product(product_id: str, current_user: User = Depends(get_current_user)):
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    await db.shop_products.delete_one({"id": product_id})
+    return {"deleted": product_id}
+
 class CartItemRequest(BaseModel):
     product_id: str
-    metal: str          # Metall-Symbol, z. B. "Au"
+    item_type: str = "coating"          # coating | shop
+    metal: Optional[str] = None         # Metall-Symbol, z. B. "Au" (nur coating)
     finish: Optional[str] = None        # Finish-ID, z. B. "au-rose"
     finish_name: Optional[str] = None   # Anzeigename, z. B. "Roségold"
     condition: Optional[str] = None     # neu | leicht | stark
     base_material: Optional[str] = None # Material-ID, z. B. "messing"
+    engraving_text: Optional[str] = None  # nur shop
     quantity: int = Field(ge=1, le=500)
 
 class CartOrderRequest(BaseModel):
@@ -873,9 +947,36 @@ async def create_cart_order(request: CartOrderRequest):
     material_factors = {m["id"]: m for m in pricing.get("materials", [])}
     finish_factors = pricing.get("finish_factors", {})
 
+    shop_settings = await _get_shop_settings()
+
     lines = []
     total = 0.0
+    sold_ids = []
+    has_shop_items = False
     for item in request.items:
+        if item.item_type == "shop":
+            shop_product = await db.shop_products.find_one({"id": item.product_id}, {"_id": 0})
+            if not shop_product or not shop_product.get("active", True):
+                raise HTTPException(status_code=400, detail="Produkt nicht gefunden")
+            if shop_product.get("sold"):
+                raise HTTPException(status_code=400, detail=f"{shop_product['name']} ist leider bereits verkauft")
+            engraving = (item.engraving_text or "").strip()[:120]
+            if engraving and not shop_product.get("engraving_available"):
+                engraving = ""
+            unit = round(float(shop_product["price_eur"]) + (float(shop_product.get("engraving_price_eur", 0)) if engraving else 0), 2)
+            total = round(total + unit, 2)
+            has_shop_items = True
+            sold_ids.append(item.product_id)
+            lines.append({
+                "product_id": item.product_id,
+                "item_type": "shop",
+                "product_name": shop_product["name"],
+                "engraving_text": engraving or None,
+                "quantity": 1,
+                "unit_price_eur": unit,
+                "line_total_eur": unit,
+            })
+            continue
         product = products.get(item.product_id)
         if not product:
             raise HTTPException(status_code=400, detail=f"Unbekanntes Produkt: {item.product_id}")
@@ -904,6 +1005,9 @@ async def create_cart_order(request: CartOrderRequest):
     if total <= 0:
         raise HTTPException(status_code=400, detail="Gesamtsumme muss größer als 0 sein")
 
+    shipping_fee = round(float(shop_settings.get("shipping_fee_eur", 0)), 2) if has_shop_items else 0.0
+    total = round(total + shipping_fee, 2)
+
     order_id = str(uuid.uuid4())
     doc = {
         "id": order_id,
@@ -913,6 +1017,7 @@ async def create_cart_order(request: CartOrderRequest):
         "phone": request.phone,
         "description": request.note,
         "items": lines,
+        "shipping_fee_eur": shipping_fee,
         "status": "new",
         "payment_status": "pending",
         "payment_amount_eur": total,
@@ -920,11 +1025,13 @@ async def create_cart_order(request: CartOrderRequest):
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     await db.configurator_orders.insert_one(doc)
+    if sold_ids:
+        await db.shop_products.update_many({"id": {"$in": sold_ids}}, {"$set": {"sold": True}})
 
     rows = "".join(
         f"""<tr>
           <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;">{l['product_name']}<br>
-              <span style="color:#94a3b8;font-size:12px;">{l['metal']}{' · ' + (l.get('finish_name') or l['finish']) if l.get('finish') else ''}{' · ' + l['base_material'] if l.get('base_material') else ''}{' · Zustand: ' + l['condition'] if l.get('condition') else ''}</span></td>
+              <span style="color:#94a3b8;font-size:12px;">{l.get('metal') or 'Handgefertigtes Unikat'}{' · ' + (l.get('finish_name') or l['finish']) if l.get('finish') else ''}{' · ' + l['base_material'] if l.get('base_material') else ''}{' · Zustand: ' + l['condition'] if l.get('condition') else ''}{' · Gravur: „' + l['engraving_text'] + '"' if l.get('engraving_text') else ''}</span></td>
           <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;text-align:center;">{l['quantity']}×</td>
           <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;text-align:right;white-space:nowrap;">{l['line_total_eur']:.2f} €</td>
         </tr>"""
@@ -938,6 +1045,7 @@ async def create_cart_order(request: CartOrderRequest):
         <th style="text-align:right;padding:8px 12px;color:#64748b;font-size:12px;text-transform:uppercase;letter-spacing:1px;">Preis</th>
       </tr>
       {rows}
+      {f'<tr><td colspan="2" style="padding:10px 12px;color:#64748b;">Versand</td><td style="padding:10px 12px;text-align:right;color:#64748b;white-space:nowrap;">{shipping_fee:.2f} €</td></tr>' if shipping_fee else ''}
       <tr>
         <td colspan="2" style="padding:12px;font-weight:bold;">Gesamtsumme</td>
         <td style="padding:12px;text-align:right;font-weight:bold;white-space:nowrap;">{total:.2f} €</td>
