@@ -15,7 +15,7 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const eur = (v) => (v == null ? '–' : `${v.toFixed(2).replace('.', ',')} €`);
 
 const CartDrawer = () => {
-  const { items, total, updateQuantity, removeItem, clearCart, isOpen, setIsOpen } = useCart();
+  const { items, total, itemsTotal, shippingFee, hasShopItems, updateQuantity, removeItem, clearCart, isOpen, setIsOpen } = useCart();
   const [contact, setContact] = useState({ name: '', email: '', phone: '' });
   const [agb, setAgb] = useState(false);
   const [stripeSubmitting, setStripeSubmitting] = useState(false);
@@ -46,11 +46,13 @@ const CartDrawer = () => {
         phone: contact.phone || null,
         items: items.map((i) => ({
           product_id: i.product_id,
-          metal: i.metal,
+          item_type: i.item_type || 'coating',
+          metal: i.metal || null,
           finish: i.finish || null,
           finish_name: i.finish_name || null,
           condition: i.condition || null,
           base_material: i.base_material || null,
+          engraving_text: i.engraving_text || null,
           quantity: i.quantity,
         })),
       });
@@ -80,16 +82,26 @@ const CartDrawer = () => {
             <div className="space-y-3">
               {items.map((item) => (
                 <div key={item.key} className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 bg-white" data-testid="cart-item">
+                  {item.item_type === 'shop' && item.image && (
+                    <img src={item.image} alt="" className="w-12 h-12 rounded-lg object-cover border border-slate-200 flex-shrink-0" />
+                  )}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-slate-800 truncate">{item.product_name}</p>
                     <p className="text-xs text-slate-500 truncate">
-                      {item.metal_name || item.metal}
-                      {item.finish_name ? ` · ${item.finish_name}` : ''}
-                      {item.material_name ? ` · ${item.material_name}` : ''}
-                      {item.condition ? ` · ${{ neu: 'Neuwertig', leicht: 'Leicht oxidiert', stark: 'Starker Rost' }[item.condition] || item.condition}` : ''}
+                      {item.item_type === 'shop' ? (
+                        <>Handgefertigtes Unikat{item.engraving_text ? ` · Gravur: „${item.engraving_text}“` : ''}</>
+                      ) : (
+                        <>
+                          {item.metal_name || item.metal}
+                          {item.finish_name ? ` · ${item.finish_name}` : ''}
+                          {item.material_name ? ` · ${item.material_name}` : ''}
+                          {item.condition ? ` · ${{ neu: 'Neuwertig', leicht: 'Leicht oxidiert', stark: 'Starker Rost' }[item.condition] || item.condition}` : ''}
+                        </>
+                      )}
                     </p>
-                    <p className="text-xs text-slate-400 mt-0.5">{eur(item.unit_price_eur)} / Stück</p>
+                    <p className="text-xs text-slate-400 mt-0.5">{eur(item.unit_price_eur)}{item.item_type === 'shop' ? '' : ' / Stück'}</p>
                   </div>
+                  {item.item_type !== 'shop' && (
                   <div className="flex items-center gap-1.5">
                     <button
                       className="w-7 h-7 rounded-full border border-slate-200 flex items-center justify-center hover:border-[#2c7a7b] text-slate-600"
@@ -107,6 +119,7 @@ const CartDrawer = () => {
                       <Plus className="w-3.5 h-3.5" />
                     </button>
                   </div>
+                  )}
                   <div className="text-right">
                     <p className="text-sm font-bold text-slate-800 whitespace-nowrap">{eur(item.line_total_eur)}</p>
                     <button
@@ -121,12 +134,24 @@ const CartDrawer = () => {
               ))}
             </div>
 
-            <div className="flex items-center justify-between border-t border-slate-200 pt-4">
-              <span className="text-sm font-semibold text-slate-600">Gesamtsumme</span>
-              <span className="text-xl font-bold text-slate-800" data-testid="cart-total">{eur(total)}</span>
+            <div className="border-t border-slate-200 pt-4 space-y-1">
+              {hasShopItems && (
+                <>
+                  <div className="flex items-center justify-between text-sm text-slate-500">
+                    <span>Zwischensumme</span><span>{eur(itemsTotal)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm text-slate-500">
+                    <span>Versand</span><span>{eur(shippingFee)}</span>
+                  </div>
+                </>
+              )}
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-slate-600">Gesamtsumme</span>
+                <span className="text-xl font-bold text-slate-800" data-testid="cart-total">{eur(total)}</span>
+              </div>
             </div>
             <p className="text-[11px] text-slate-400 -mt-3">
-              inkl. vorfrankiertem Versandlabel · finale Annahme nach Wareneingang
+              {hasShopItems ? 'Unikate werden sicher verpackt versendet' : 'inkl. vorfrankiertem Versandlabel · finale Annahme nach Wareneingang'}
             </p>
 
             <div className="space-y-3 p-4 bg-slate-50 rounded-xl border border-slate-200">

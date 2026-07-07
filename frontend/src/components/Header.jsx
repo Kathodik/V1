@@ -13,7 +13,7 @@ const Header = () => {
   const { cartEnabled, count, setIsOpen } = useCart();
 
   const CartButton = ({ className = '' }) => (
-    cartEnabled ? (
+    (cartEnabled || count > 0) ? (
       <button
         onClick={() => setIsOpen(true)}
         className={`relative p-2 rounded-full text-slate-600 hover:text-[#2c7a7b] hover:bg-slate-100/80 transition-colors ${className}`}
@@ -39,6 +39,7 @@ const Header = () => {
   const navigation = [
     { name: 'Home', href: '/' },
     { name: 'Leistungen', href: '/services' },
+    { name: 'Shop', href: '/shop' },
     { name: 'Referenzen', href: '/references' },
     { name: 'Kontakt', href: '/contact' },
   ];

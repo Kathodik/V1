@@ -11,6 +11,7 @@ import CookieConsent from './components/CookieConsent';
 import ScrollToTop from './components/ScrollToTop';
 import Home from './pages/Home';
 import Services from './pages/Services';
+import Shop from './pages/Shop';
 import AIThreeDConfigurator from './pages/AIThreeDConfigurator';
 import References from './pages/References';
 import Contact from './pages/Contact';
@@ -28,6 +29,7 @@ import './App.css';
 const PAGE_TITLES = {
   '/': 'Kathodik – Galvanotechnik & Lohngalvanisierung',
   '/services': 'Leistungen: Lohngalvanik, Vor-Ort-Galvanik & 3D-Konfigurator | Kathodik',
+  '/shop': 'Shop – Handgefertigte Kupfer-Unikate | Kathodik',
   '/3d-configurator': '3D-Konfigurator – Wunschteil beschreiben, KI modelliert | Kathodik',
   '/references': 'Referenzen & Arbeiten | Kathodik Galvanotechnik',
   '/contact': 'Kontakt | Kathodik Galvanotechnik',
@@ -59,6 +61,7 @@ function AppContent() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/services" element={<Services />} />
+          <Route path="/shop" element={<Shop />} />
           <Route path="/3d-configurator" element={<AIThreeDConfigurator />} />
           <Route path="/references" element={<References />} />
           <Route path="/contact" element={<Contact />} />

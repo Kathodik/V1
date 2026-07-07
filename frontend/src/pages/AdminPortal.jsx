@@ -7,7 +7,7 @@ import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
 import { Switch } from '../components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { Settings, Users, Bell, Package, LogOut, Mail, BarChart3, Eye, TrendingUp, Cookie, Box, Euro, Trash2, Plus } from 'lucide-react';
+import { Settings, Users, Bell, Package, LogOut, Mail, BarChart3, Eye, TrendingUp, Cookie, Box, Euro, Trash2, Plus, Gem, Upload } from 'lucide-react';
 import { Input } from '../components/ui/input';
 import { AnimateOnScroll } from '../components/AnimateOnScroll';
 import { useAuth } from '../contexts/AuthContext';
@@ -32,6 +32,101 @@ const AdminPortal = () => {
   const [savingPricing, setSavingPricing] = useState(false);
   const [orderFiles, setOrderFiles] = useState({});
   const [orderFilter, setOrderFilter] = useState('all');
+
+  const [shopProducts, setShopProducts] = useState([]);
+  const [shopShipping, setShopShipping] = useState(5.9);
+  const [editingProduct, setEditingProduct] = useState(null);
+  const [savingShop, setSavingShop] = useState(false);
+
+  const emptyProduct = { name: '', description: '', price_eur: 149, engraving_available: true, engraving_price_eur: 15, images: [], active: true, sold: false };
+
+  const fetchShopData = async () => {
+    try {
+      const headers = { Authorization: `Bearer ${token}` };
+      const [prodRes, setRes] = await Promise.all([
+        axios.get(`${API}/shop/products/all`, { headers }),
+        axios.get(`${API}/shop/settings`),
+      ]);
+      setShopProducts(prodRes.data || []);
+      setShopShipping(setRes.data?.shipping_fee_eur ?? 5.9);
+    } catch { /* Tab zeigt dann leere Liste */ }
+  };
+
+  const shopDownscale = (file, maxDim = 1200, quality = 0.82) => new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Bild unlesbar')); };
+    img.src = url;
+  });
+
+  const handleProductImages = async (e) => {
+    const files = Array.from(e.target.files);
+    e.target.value = '';
+    if (!editingProduct) return;
+    if ((editingProduct.images?.length || 0) + files.length > 6) { toast.error('Maximal 6 Bilder'); return; }
+    try {
+      const imgs = await Promise.all(files.map((f) => shopDownscale(f)));
+      setEditingProduct((prev) => ({ ...prev, images: [...(prev.images || []), ...imgs] }));
+    } catch { toast.error('Bild konnte nicht verarbeitet werden'); }
+  };
+
+  const saveShopProduct = async () => {
+    if (!editingProduct?.name || !editingProduct?.price_eur) { toast.error('Name und Preis sind Pflicht'); return; }
+    setSavingShop(true);
+    try {
+      const headers = { Authorization: `Bearer ${token}` };
+      const payload = { ...editingProduct };
+      const id = payload.id;
+      delete payload.id; delete payload.created_at;
+      if (id) {
+        await axios.put(`${API}/shop/products/${id}`, payload, { headers });
+      } else {
+        await axios.post(`${API}/shop/products`, payload, { headers });
+      }
+      toast.success('Produkt gespeichert');
+      setEditingProduct(null);
+      fetchShopData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Speichern fehlgeschlagen');
+    } finally { setSavingShop(false); }
+  };
+
+  const deleteShopProduct = async (id) => {
+    if (!window.confirm('Produkt wirklich löschen?')) return;
+    try {
+      const headers = { Authorization: `Bearer ${token}` };
+      await axios.delete(`${API}/shop/products/${id}`, { headers });
+      toast.success('Produkt gelöscht');
+      fetchShopData();
+    } catch { toast.error('Löschen fehlgeschlagen'); }
+  };
+
+  const toggleShopFlag = async (product, field) => {
+    try {
+      const headers = { Authorization: `Bearer ${token}` };
+      const payload = { ...product, [field]: !product[field] };
+      delete payload.id; delete payload.created_at;
+      await axios.put(`${API}/shop/products/${product.id}`, payload, { headers });
+      setShopProducts((prev) => prev.map((pp) => (pp.id === product.id ? { ...pp, [field]: !product[field] } : pp)));
+    } catch { toast.error('Änderung fehlgeschlagen'); }
+  };
+
+  const saveShopShipping = async () => {
+    try {
+      const headers = { Authorization: `Bearer ${token}` };
+      await axios.put(`${API}/shop/settings`, { shipping_fee_eur: parseFloat(shopShipping) || 0 }, { headers });
+      toast.success('Versandpauschale gespeichert');
+    } catch { toast.error('Speichern fehlgeschlagen'); }
+  };
 
   const ORDER_FILTERS = [
     { id: 'all', label: 'Alle', types: null },
@@ -108,6 +203,7 @@ const AdminPortal = () => {
         axios.get(`${API}/configurator/orders`, { headers }).catch(() => ({ data: [] }))
       ]);
       axios.get(`${API}/pricing`).then((res) => setPricing(res.data)).catch(() => setPricing(null));
+      fetchShopData();
       setAcceptingOrders(settingsRes.data.accepting_orders);
       setPauseMessage(settingsRes.data.pause_message || '');
       setWaitlist(waitlistRes.data);
@@ -273,7 +369,7 @@ const AdminPortal = () => {
           {/* Tabs */}
           <AnimateOnScroll variant="fadeUp" delay={200}>
             <Tabs defaultValue="analytics">
-              <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6 mb-6">
+              <TabsList className="grid w-full grid-cols-3 lg:grid-cols-7 mb-6">
                 <TabsTrigger value="analytics">
                   <BarChart3 className="h-4 w-4 mr-2" />
                   Statistiken
@@ -294,11 +390,125 @@ const AdminPortal = () => {
                   <Mail className="h-4 w-4 mr-2" />
                   Kontakt ({contactMessages.length})
                 </TabsTrigger>
+                <TabsTrigger value="shop" data-testid="shop-tab">
+                  <Gem className="h-4 w-4 mr-2" />
+                  Shop ({shopProducts.length})
+                </TabsTrigger>
                 <TabsTrigger value="pricing" data-testid="pricing-tab">
                   <Euro className="h-4 w-4 mr-2" />
                   Preise
                 </TabsTrigger>
               </TabsList>
+
+              {/* Shop Tab */}
+              <TabsContent value="shop">
+                <div className="space-y-6">
+                  <Card className="border-2 border-[#2c7a7b]/20">
+                    <CardContent className="p-6 flex flex-wrap items-center justify-between gap-4">
+                      <div>
+                        <p className="font-bold text-slate-800">Versandpauschale pro Bestellung</p>
+                        <p className="text-sm text-slate-500 mt-1">Wird bei Shop-Bestellungen automatisch zur Summe addiert.</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Input type="number" step="0.1" min="0" value={shopShipping} onChange={(e) => setShopShipping(e.target.value)} className="w-28 text-right" data-testid="shop-shipping-input" />
+                        <span className="text-sm text-slate-500">€</span>
+                        <Button size="sm" onClick={saveShopShipping} className="bg-[#2c7a7b] hover:bg-[#285e61] text-white rounded-full px-4">Speichern</Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {editingProduct ? (
+                    <Card>
+                      <CardHeader><CardTitle className="text-lg">{editingProduct.id ? 'Produkt bearbeiten' : 'Neues Produkt'}</CardTitle></CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                            <Label className="mb-1.5 block text-sm font-medium">Name *</Label>
+                            <Input value={editingProduct.name} onChange={(e) => setEditingProduct({ ...editingProduct, name: e.target.value })} placeholder="z. B. Kupferrose „Patina“ im Glasdom" data-testid="shop-name-input" />
+                          </div>
+                          <div>
+                            <Label className="mb-1.5 block text-sm font-medium">Preis (€) *</Label>
+                            <Input type="number" step="1" min="1" value={editingProduct.price_eur} onChange={(e) => setEditingProduct({ ...editingProduct, price_eur: e.target.value === '' ? '' : parseFloat(e.target.value) })} data-testid="shop-price-input" />
+                          </div>
+                        </div>
+                        <div>
+                          <Label className="mb-1.5 block text-sm font-medium">Beschreibung</Label>
+                          <Textarea value={editingProduct.description || ''} onChange={(e) => setEditingProduct({ ...editingProduct, description: e.target.value })} placeholder="Material, Maße, Besonderheiten, Geschichte des Stücks …" className="min-h-24" />
+                        </div>
+                        <div className="flex flex-wrap items-center gap-6">
+                          <div className="flex items-center gap-2">
+                            <Switch checked={!!editingProduct.engraving_available} onCheckedChange={(v) => setEditingProduct({ ...editingProduct, engraving_available: v })} />
+                            <span className="text-sm text-slate-700">Gravur möglich</span>
+                          </div>
+                          {editingProduct.engraving_available && (
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm text-slate-500">Gravur-Aufpreis</span>
+                              <Input type="number" step="1" min="0" value={editingProduct.engraving_price_eur} onChange={(e) => setEditingProduct({ ...editingProduct, engraving_price_eur: e.target.value === '' ? '' : parseFloat(e.target.value) })} className="w-24 text-right" />
+                              <span className="text-sm text-slate-500">€</span>
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <Label className="mb-1.5 block text-sm font-medium">Bilder (max. 6)</Label>
+                          <div className="flex flex-wrap gap-3">
+                            {(editingProduct.images || []).map((img, i) => (
+                              <div key={i} className="relative">
+                                <img src={img} alt="" className="w-24 h-24 rounded-xl object-cover border border-slate-200" />
+                                <button onClick={() => setEditingProduct((prev) => ({ ...prev, images: prev.images.filter((_, x) => x !== i) }))} className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-500 text-white text-xs font-bold shadow">×</button>
+                              </div>
+                            ))}
+                            <label className="w-24 h-24 rounded-xl border-2 border-dashed border-slate-300 hover:border-[#2c7a7b] flex flex-col items-center justify-center cursor-pointer text-slate-400">
+                              <Upload className="w-5 h-5 mb-1" />
+                              <span className="text-[10px]">Hochladen</span>
+                              <input type="file" multiple accept="image/*" onChange={handleProductImages} className="hidden" data-testid="shop-image-upload" />
+                            </label>
+                          </div>
+                        </div>
+                        <div className="flex gap-3">
+                          <Button onClick={saveShopProduct} disabled={savingShop} className="bg-[#2c7a7b] hover:bg-[#285e61] text-white rounded-full px-6" data-testid="shop-save-btn">
+                            {savingShop ? 'Wird gespeichert…' : 'Produkt speichern'}
+                          </Button>
+                          <Button variant="outline" onClick={() => setEditingProduct(null)} className="rounded-full">Abbrechen</Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <Button onClick={() => setEditingProduct({ ...emptyProduct })} className="bg-[#2c7a7b] hover:bg-[#285e61] text-white rounded-full px-6" data-testid="shop-new-btn">
+                      <Plus className="w-4 h-4 mr-2" /> Neues Produkt
+                    </Button>
+                  )}
+
+                  <div className="space-y-3">
+                    {shopProducts.map((p) => (
+                      <Card key={p.id} className="bg-white border-slate-200">
+                        <CardContent className="p-4 flex items-center gap-4">
+                          {p.images?.[0] ? (
+                            <img src={p.images[0]} alt="" className="w-16 h-16 rounded-xl object-cover border border-slate-200" />
+                          ) : (
+                            <div className="w-16 h-16 rounded-xl bg-slate-100 flex items-center justify-center text-slate-300"><Gem className="w-6 h-6" /></div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-slate-800 truncate">{p.name}</p>
+                            <p className="text-sm text-slate-500">{Number(p.price_eur).toFixed(2).replace('.', ',')} €{p.engraving_available ? ` · Gravur +${Number(p.engraving_price_eur || 0).toFixed(2).replace('.', ',')} €` : ''}</p>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-1.5">
+                              <Switch checked={p.active !== false} onCheckedChange={() => toggleShopFlag(p, 'active')} />
+                              <span className="text-xs text-slate-400 w-12">{p.active !== false ? 'sichtbar' : 'versteckt'}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <Switch checked={!!p.sold} onCheckedChange={() => toggleShopFlag(p, 'sold')} />
+                              <span className="text-xs text-slate-400 w-12">{p.sold ? 'verkauft' : 'frei'}</span>
+                            </div>
+                            <Button size="sm" variant="outline" onClick={() => setEditingProduct({ ...p })} className="rounded-full h-8 text-xs px-4">Bearbeiten</Button>
+                            <button onClick={() => deleteShopProduct(p.id)} className="text-slate-300 hover:text-red-500" aria-label="Löschen"><Trash2 className="w-4 h-4" /></button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              </TabsContent>
 
               {/* Pricing Tab */}
               <TabsContent value="pricing">
