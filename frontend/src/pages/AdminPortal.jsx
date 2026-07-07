@@ -38,7 +38,15 @@ const AdminPortal = () => {
   const [editingProduct, setEditingProduct] = useState(null);
   const [savingShop, setSavingShop] = useState(false);
 
-  const emptyProduct = { name: '', description: '', price_eur: 149, engraving_available: true, engraving_price_eur: 15, images: [], active: true, sold: false };
+  const emptyProduct = {
+    name: '', description: '', price_eur: 149, engraving_available: true, engraving_price_eur: 15,
+    images: [], active: true, sold: false, lead_time: 'ca. 2–3 Wochen',
+    options: [
+      { name: 'Beschichtung', choices: [{ label: 'Kupfer (patiniert)', surcharge_eur: 0 }, { label: 'Silber', surcharge_eur: 25 }] },
+      { name: 'Sockel', choices: [{ label: 'Holz', surcharge_eur: 0 }, { label: 'Kunststoff', surcharge_eur: 0 }] },
+      { name: 'LED-Beleuchtung', choices: [{ label: 'Ohne', surcharge_eur: 0 }, { label: 'Warmweiß', surcharge_eur: 10 }, { label: 'Kaltweiß', surcharge_eur: 10 }] },
+    ],
+  };
 
   const fetchShopData = async () => {
     try {
@@ -449,7 +457,39 @@ const AdminPortal = () => {
                           )}
                         </div>
                         <div>
-                          <Label className="mb-1.5 block text-sm font-medium">Bilder (max. 6)</Label>
+                          <Label className="mb-1.5 block text-sm font-medium">Anfertigungszeit (Anzeige für Kunden)</Label>
+                          <Input value={editingProduct.lead_time || ''} onChange={(e) => setEditingProduct({ ...editingProduct, lead_time: e.target.value })} placeholder="z. B. ca. 2–3 Wochen" className="max-w-xs" />
+                        </div>
+                        <div>
+                          <Label className="mb-1.5 block text-sm font-medium">Optionen (Kunde wählt je Gruppe eine Ausführung)</Label>
+                          <div className="space-y-3">
+                            {(editingProduct.options || []).map((group, gi) => (
+                              <div key={gi} className="p-3 rounded-xl border border-slate-200 space-y-2">
+                                <div className="flex items-center gap-2">
+                                  <Input value={group.name} onChange={(e) => setEditingProduct((prev) => ({ ...prev, options: prev.options.map((g, i) => i === gi ? { ...g, name: e.target.value } : g) }))} placeholder="Gruppenname, z. B. Beschichtung" className="font-semibold" />
+                                  <button onClick={() => setEditingProduct((prev) => ({ ...prev, options: prev.options.filter((_, i) => i !== gi) }))} className="text-slate-300 hover:text-red-500" aria-label="Gruppe entfernen"><Trash2 className="w-4 h-4" /></button>
+                                </div>
+                                {(group.choices || []).map((choice, ci) => (
+                                  <div key={ci} className="flex items-center gap-2 pl-2">
+                                    <Input value={choice.label} onChange={(e) => setEditingProduct((prev) => ({ ...prev, options: prev.options.map((g, i) => i === gi ? { ...g, choices: g.choices.map((c, x) => x === ci ? { ...c, label: e.target.value } : c) } : g) }))} placeholder="Ausführung, z. B. Silber" className="flex-1" />
+                                    <span className="text-xs text-slate-400">Aufpreis</span>
+                                    <Input type="number" step="1" min="0" value={choice.surcharge_eur} onChange={(e) => setEditingProduct((prev) => ({ ...prev, options: prev.options.map((g, i) => i === gi ? { ...g, choices: g.choices.map((c, x) => x === ci ? { ...c, surcharge_eur: e.target.value === '' ? '' : parseFloat(e.target.value) } : c) } : g) }))} className="w-24 text-right" />
+                                    <span className="text-sm text-slate-500">€</span>
+                                    <button onClick={() => setEditingProduct((prev) => ({ ...prev, options: prev.options.map((g, i) => i === gi ? { ...g, choices: g.choices.filter((_, x) => x !== ci) } : g) }))} className="text-slate-300 hover:text-red-500" aria-label="Ausführung entfernen"><Trash2 className="w-3.5 h-3.5" /></button>
+                                  </div>
+                                ))}
+                                <Button size="sm" variant="ghost" onClick={() => setEditingProduct((prev) => ({ ...prev, options: prev.options.map((g, i) => i === gi ? { ...g, choices: [...(g.choices || []), { label: '', surcharge_eur: 0 }] } : g) }))} className="text-xs text-[#2c7a7b]">
+                                  <Plus className="w-3 h-3 mr-1" /> Ausführung hinzufügen
+                                </Button>
+                              </div>
+                            ))}
+                            <Button size="sm" variant="outline" onClick={() => setEditingProduct((prev) => ({ ...prev, options: [...(prev.options || []), { name: '', choices: [{ label: '', surcharge_eur: 0 }] }] }))} className="rounded-full text-xs">
+                              <Plus className="w-3 h-3 mr-1" /> Optionsgruppe hinzufügen
+                            </Button>
+                          </div>
+                        </div>
+                        <div>
+                          <Label className="mb-1.5 block text-sm font-medium">Referenzbilder (max. 6)</Label>
                           <div className="flex flex-wrap gap-3">
                             {(editingProduct.images || []).map((img, i) => (
                               <div key={i} className="relative">
@@ -498,7 +538,7 @@ const AdminPortal = () => {
                             </div>
                             <div className="flex items-center gap-1.5">
                               <Switch checked={!!p.sold} onCheckedChange={() => toggleShopFlag(p, 'sold')} />
-                              <span className="text-xs text-slate-400 w-12">{p.sold ? 'verkauft' : 'frei'}</span>
+                              <span className="text-xs text-slate-400 w-16">{p.sold ? 'pausiert' : 'bestellbar'}</span>
                             </div>
                             <Button size="sm" variant="outline" onClick={() => setEditingProduct({ ...p })} className="rounded-full h-8 text-xs px-4">Bearbeiten</Button>
                             <button onClick={() => deleteShopProduct(p.id)} className="text-slate-300 hover:text-red-500" aria-label="Löschen"><Trash2 className="w-4 h-4" /></button>
