@@ -362,6 +362,7 @@ const Services = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [cartQty, setCartQty] = useState(1);
   const [cartMaterial, setCartMaterial] = useState(null);
+  const [cartImages, setCartImages] = useState([]);
   const [showClassicForm, setShowClassicForm] = useState(false);
   const { cartEnabled, products: cartProducts, materials: cartMaterials, unitPrice, addItem, clearCart, setIsOpen: setCartOpen } = useCart();
   const cartPriceOpts = { condition, base_material: cartMaterial, finish: selectedFinish };
@@ -411,14 +412,28 @@ const Services = () => {
     setSelectedProduct(null);
     setCartQty(1);
     setCartMaterial(null);
+    setCartImages([]);
     setShowClassicForm(false);
     setTimeout(() => detailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+  };
+
+  const handleCartImageUpload = async (e) => {
+    const files = Array.from(e.target.files);
+    e.target.value = '';
+    if (files.length + cartImages.length > 3) { toast.error('Maximal 3 Fotos'); return; }
+    try {
+      const imgs = await Promise.all(files.map((f) => downscaleImage(f)));
+      setCartImages((prev) => [...prev, ...imgs]);
+    } catch {
+      toast.error('Foto konnte nicht verarbeitet werden');
+    }
   };
 
   const handleAddToCart = () => {
     if (!selectedProduct) { toast.error('Bitte wählen Sie ein Produkt'); return; }
     if (!condition) { toast.error('Bitte wählen Sie den Zustand des Bauteils'); return; }
     if (!cartMaterial) { toast.error('Bitte wählen Sie das Grundmaterial'); return; }
+    if (cartImages.length === 0) { toast.error('Bitte laden Sie mindestens ein Foto Ihres Bauteils hoch'); return; }
     const finish = selectedMetal.finishes.find(f => f.id === selectedFinish);
     addItem({
       product_id: selectedProduct,
@@ -428,9 +443,11 @@ const Services = () => {
       finish_name: finish?.name,
       condition,
       base_material: cartMaterial,
+      images: cartImages,
       quantity: cartQty,
     });
     toast.success('Zum Warenkorb hinzugefügt');
+    setCartImages([]);
     setCartOpen(true);
   };
 
@@ -1228,6 +1245,32 @@ const Services = () => {
                         </div>
                         <p className="text-xs text-slate-400 mt-2">
                           Pauschalpreis je Produktkategorie · Metall, Ausführung, Zustand und Grundmaterial bereits eingerechnet
+                        </p>
+                      </div>
+
+                      <div>
+                        <Label className="text-slate-800 mb-2 block font-semibold">Fotos Ihres Bauteils * (max. 3)</Label>
+                        <div className="flex flex-wrap gap-3">
+                          {cartImages.map((img, i) => (
+                            <div key={i} className="relative">
+                              <img src={img} alt={`Bauteil ${i + 1}`} className="w-20 h-20 rounded-xl object-cover border border-slate-200" />
+                              <button
+                                type="button"
+                                onClick={() => setCartImages((prev) => prev.filter((_, x) => x !== i))}
+                                className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-500 text-white text-xs font-bold shadow"
+                              >×</button>
+                            </div>
+                          ))}
+                          {cartImages.length < 3 && (
+                            <label className="w-20 h-20 rounded-xl border-2 border-dashed border-slate-300 hover:border-[#2c7a7b] flex flex-col items-center justify-center cursor-pointer text-slate-400">
+                              <Upload className="w-5 h-5 mb-1" />
+                              <span className="text-[10px]">Hochladen</span>
+                              <input type="file" multiple accept="image/*" onChange={handleCartImageUpload} className="hidden" data-testid="cart-image-upload" />
+                            </label>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-400 mt-2">
+                          Pflichtangabe: So können wir prüfen, ob Produktkategorie und Zustand zu Ihrem Stück passen.
                         </p>
                       </div>
 

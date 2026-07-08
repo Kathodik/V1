@@ -66,9 +66,9 @@ export const CartProvider = ({ children }) => {
     return Math.round(product.base_price_eur * factor * condFactor * matFactor * finFactor * 100) / 100;
   };
 
-  const addItem = ({ item_type = 'coating', product_id, metal, metal_name, finish, finish_name, condition, base_material, engraving_text, selected_options, quantity }) => {
+  const addItem = ({ item_type = 'coating', product_id, metal, metal_name, finish, finish_name, condition, base_material, engraving_text, selected_options, images, quantity }) => {
     setItems((prev) => {
-      const entry = { item_type, product_id, metal, metal_name, finish, finish_name, condition, base_material, engraving_text, selected_options, quantity };
+      const entry = { item_type, product_id, metal, metal_name, finish, finish_name, condition, base_material, engraving_text, selected_options, images, quantity };
       const key = itemKey(entry);
       const maxQty = item_type === 'shop' ? 20 : 500;
       const existing = prev.find((i) => itemKey(i) === key);
