@@ -57,6 +57,7 @@ const CartDrawer = () => {
           base_material: i.base_material || null,
           engraving_text: i.engraving_text || null,
           selected_options: i.selected_options || null,
+          images: i.images || null,
           quantity: i.quantity,
         })),
       });
@@ -86,8 +87,8 @@ const CartDrawer = () => {
             <div className="space-y-3">
               {items.map((item) => (
                 <div key={item.key} className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 bg-white" data-testid="cart-item">
-                  {item.item_type === 'shop' && item.image && (
-                    <img src={item.image} alt="" className="w-12 h-12 rounded-lg object-cover border border-slate-200 flex-shrink-0" />
+                  {(item.item_type === 'shop' ? item.image : item.images?.[0]) && (
+                    <img src={item.item_type === 'shop' ? item.image : item.images[0]} alt="" className="w-12 h-12 rounded-lg object-cover border border-slate-200 flex-shrink-0" />
                   )}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-slate-800 truncate">{item.product_name}</p>

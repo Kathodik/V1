@@ -1017,6 +1017,7 @@ class CartItemRequest(BaseModel):
     base_material: Optional[str] = None # Material-ID, z. B. "messing"
     engraving_text: Optional[str] = None  # nur shop
     selected_options: Optional[dict] = None  # nur shop: {"Beschichtung": "Silber", ...}
+    images: Optional[List[str]] = None    # nur coating: Pflicht-Bauteilfotos (data-URLs)
     quantity: int = Field(ge=1, le=500)
 
 class CartOrderRequest(BaseModel):
@@ -1044,6 +1045,7 @@ async def create_cart_order(request: CartOrderRequest):
     lines = []
     total = 0.0
     has_shop_items = False
+    all_part_images = []
     for item in request.items:
         if item.item_type == "shop":
             shop_product = await db.shop_products.find_one({"id": item.product_id}, {"_id": 0})
@@ -1086,6 +1088,11 @@ async def create_cart_order(request: CartOrderRequest):
         product = products.get(item.product_id)
         if not product:
             raise HTTPException(status_code=400, detail=f"Unbekanntes Produkt: {item.product_id}")
+        if not item.images or len([i for i in item.images if i]) == 0:
+            raise HTTPException(status_code=400, detail=f"Bitte laden Sie mindestens ein Foto des Bauteils hoch ({product['name']})")
+        if len(item.images) > 3:
+            raise HTTPException(status_code=400, detail="Maximal 3 Fotos pro Position")
+        all_part_images.extend(item.images)
         factor = factors.get(item.metal)
         if not factor:
             raise HTTPException(status_code=400, detail=f"Unbekanntes Metall: {item.metal}")
@@ -1135,6 +1142,15 @@ async def create_cart_order(request: CartOrderRequest):
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     await db.configurator_orders.insert_one(doc)
+    if all_part_images:
+        for i, img in enumerate(all_part_images):
+            await db.configurator_files.insert_one({
+                "order_id": order_id,
+                "file_data": img,
+                "file_name": f"part_image_{i+1}.jpg",
+                "type": "part_image",
+            })
+        await db.configurator_orders.update_one({"id": order_id}, {"$set": {"image_count": len(all_part_images)}})
 
     rows = "".join(
         f"""<tr>
@@ -1193,9 +1209,15 @@ async def create_cart_order(request: CartOrderRequest):
         <p>Mit freundlichen Grüßen<br><strong>Ihr Kathodik-Team</strong></p>
         """
     )
+    cart_attachments = []
+    for i, img in enumerate(all_part_images):
+        b64 = img.split(",", 1)[1] if img.startswith("data:") else img
+        cart_attachments.append({"filename": f"bauteilfoto_{i+1}.jpg", "content": b64})
+
     await send_email_via_resend(
         to_email="service@kathodik.com",
         subject=f"Neue Warenkorb-Bestellung von {request.name} ({total:.2f} €)",
+        attachments=cart_attachments or None,
         html_content=f"""
         <h2 style="margin:0 0 8px;color:#1e293b;">Neue Warenkorb-Bestellung</h2>
         <p><strong>Name:</strong> {request.name}<br>
