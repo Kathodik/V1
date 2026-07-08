@@ -368,6 +368,73 @@ async def confirm_contact(token: str, body: ContactConfirmRequest):
 
     return {"status": "confirmed", "id": doc["id"], "confirmed_at": now_iso}
 
+# ─── Online-Widerrufsfunktion („Widerrufsbutton") ───
+class WithdrawalRequest(BaseModel):
+    name: str
+    email: EmailStr
+    anschrift: Optional[str] = None
+    leistung: str                    # Beschreibung der Ware/Dienstleistung bzw. Auftragsnummer
+    bestellt_am: Optional[str] = None
+    erhalten_am: Optional[str] = None
+
+@api_router.post("/widerruf")
+async def submit_withdrawal(request: WithdrawalRequest):
+    """Online-Widerruf: speichert die Erklärung und bestätigt den Eingang unverzüglich
+    auf einem dauerhaften Datenträger (E-Mail) inkl. Datum und Uhrzeit."""
+    withdrawal_id = str(uuid.uuid4())
+    received_at = datetime.now(timezone.utc)
+    received_local = received_at.isoformat()
+    doc = {
+        "id": withdrawal_id,
+        "name": request.name,
+        "email": request.email,
+        "anschrift": request.anschrift,
+        "leistung": request.leistung,
+        "bestellt_am": request.bestellt_am,
+        "erhalten_am": request.erhalten_am,
+        "received_at": received_local,
+    }
+    await db.withdrawals.insert_one({**doc})
+
+    received_display = received_at.strftime("%d.%m.%Y um %H:%M Uhr (UTC)")
+    details = f"""
+        <p><strong>Vertrag / Ware / Dienstleistung:</strong><br>{request.leistung}</p>
+        <p><strong>Bestellt am:</strong> {request.bestellt_am or 'Nicht angegeben'}<br>
+        <strong>Erhalten am:</strong> {request.erhalten_am or 'Nicht angegeben'}</p>
+        <p><strong>Name:</strong> {request.name}<br>
+        <strong>E-Mail:</strong> {request.email}<br>
+        <strong>Anschrift:</strong> {request.anschrift or 'Nicht angegeben'}</p>
+    """
+    # Eingangsbestätigung an den Verbraucher (Pflicht: unverzüglich, dauerhafter Datenträger)
+    await send_email_via_resend(
+        to_email=request.email,
+        subject="Kathodik – Eingangsbestätigung Ihres Widerrufs",
+        html_content=f"""
+        <h2 style="margin:0 0 8px;color:#1e293b;">Eingangsbestätigung Ihres Widerrufs</h2>
+        <p>Sehr geehrte/r {request.name},</p>
+        <p>hiermit bestätigen wir den Eingang Ihrer Widerrufserklärung
+        am <strong>{received_display}</strong>.</p>
+        {details}
+        <p>Wir bearbeiten Ihren Widerruf umgehend und melden uns bezüglich der Rückabwicklung.
+        Bereits geleistete Zahlungen erstatten wir spätestens binnen vierzehn Tagen.</p>
+        <p style="color:#64748b;font-size:13px;">Vorgangsnummer: {withdrawal_id}</p>
+        <p>Mit freundlichen Grüßen<br><strong>Kathodik – Galvanotechnik</strong></p>
+        """
+    )
+    # Benachrichtigung an den Admin
+    await send_email_via_resend(
+        to_email="service@kathodik.com",
+        subject=f"Widerruf eingegangen von {request.name}",
+        html_content=f"""
+        <h2 style="margin:0 0 8px;color:#1e293b;">Neuer Widerruf</h2>
+        <p>Eingegangen am <strong>{received_display}</strong>.</p>
+        {details}
+        <p style="color:#64748b;font-size:13px;">Vorgangsnummer: {withdrawal_id} ·
+        Frist: Rückzahlung binnen 14 Tagen nach Eingang.</p>
+        """
+    )
+    return {"id": withdrawal_id, "received_at": received_local, "received_display": received_display}
+
 @api_router.get("/contact/messages")
 async def get_contact_messages(current_user: User = Depends(get_current_user)):
     """Get all contact messages (admin only)"""

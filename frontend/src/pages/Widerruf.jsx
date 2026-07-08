@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
-import { Download, FileText, AlertCircle, Send } from 'lucide-react';
+import { Download, FileText, AlertCircle, Send, CheckCircle2 } from 'lucide-react';
+import axios from 'axios';
 import { AnimateOnScroll } from '../components/AnimateOnScroll';
 import { useParallax } from '../hooks/useScrollAnimation';
 import { toast } from 'sonner';
@@ -17,9 +18,35 @@ const Widerruf = () => {
     bestelltAm: '',
     erhaltenAm: '',
     name: '',
+    email: '',
     anschrift: '',
     datum: today,
   });
+  const [submitting, setSubmitting] = useState(false);
+  const [confirmation, setConfirmation] = useState(null);
+
+  const handleOnlineWiderruf = async () => {
+    if (!form.name || !form.leistung || !form.email) {
+      toast.error('Bitte mindestens Name, E-Mail und Leistung/Ware angeben');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/widerruf`, {
+        name: form.name,
+        email: form.email,
+        anschrift: form.anschrift || null,
+        leistung: form.leistung,
+        bestellt_am: form.bestelltAm || null,
+        erhalten_am: form.erhaltenAm || null,
+      });
+      setConfirmation(res.data);
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Widerruf konnte nicht übermittelt werden – bitte nutzen Sie alternativ E-Mail oder Post.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const update = (key) => (e) => setForm({ ...form, [key]: e.target.value });
 
@@ -75,7 +102,7 @@ ${form.name || ''}`;
               <p className="text-lg text-slate-500 max-w-xl mx-auto">
                 Kathodik – Galvanotechnik | Hannes Barfuß
               </p>
-              <p className="text-sm text-slate-400 mt-2">Stand: Mai 2026</p>
+              <p className="text-sm text-slate-400 mt-2">Stand: Juli 2026</p>
             </div>
           </AnimateOnScroll>
         </div>
@@ -105,6 +132,13 @@ ${form.name || ''}`;
                       E-Mail: <a href="mailto:service@kathodik.com" className="text-[#2c7a7b] font-semibold underline">service@kathodik.com</a>)
                       mittels einer eindeutigen Erklärung (z. B. ein mit der Post versandter Brief oder
                       eine E-Mail) über Ihren Entschluss, diesen Vertrag zu widerrufen, informieren.
+                    </p>
+                    <p className="text-sm text-slate-600 leading-relaxed mt-3">
+                      Sie können Ihren Widerruf auch direkt über die{' '}
+                      <a href="#widerrufsfunktion" className="text-[#2c7a7b] font-semibold underline">Widerrufsfunktion</a>{' '}
+                      auf dieser Seite erklären. Machen Sie von dieser Möglichkeit Gebrauch, bestätigen
+                      wir Ihnen den Eingang des Widerrufs unverzüglich per E-Mail unter Angabe von Datum
+                      und Uhrzeit des Eingangs.
                     </p>
                   </div>
 
@@ -165,17 +199,18 @@ ${form.name || ''}`;
 
             {/* Muster-Widerrufsformular */}
             <AnimateOnScroll variant="fadeUp">
-              <div className="rounded-2xl border border-[#2c7a7b]/20 bg-gradient-to-br from-[#2c7a7b]/[0.03] to-white p-7 sm:p-9 shadow-sm" data-testid="widerrufs-formular">
+              <div id="widerrufsfunktion" className="rounded-2xl border border-[#2c7a7b]/20 bg-gradient-to-br from-[#2c7a7b]/[0.03] to-white p-7 sm:p-9 shadow-sm scroll-mt-24" data-testid="widerrufs-formular">
                 <div className="flex items-start gap-4 mb-6">
                   <div className="w-12 h-12 rounded-xl bg-[#2c7a7b]/10 flex items-center justify-center flex-shrink-0">
                     <FileText className="h-6 w-6 text-[#2c7a7b]" />
                   </div>
                   <div>
                     <h2 className="text-xl sm:text-2xl font-bold text-slate-800 mb-1">
-                      Muster-Widerrufsformular
+                      Vertrag hier widerrufen
                     </h2>
                     <p className="text-sm text-slate-500">
-                      Zum Ausdrucken und postalisch oder per E-Mail zurücksenden.
+                      Füllen Sie das Formular aus und erklären Sie Ihren Widerruf direkt online.
+                      Alternativ: ausdrucken und postalisch oder per E-Mail senden.
                     </p>
                   </div>
                 </div>
@@ -245,6 +280,18 @@ ${form.name || ''}`;
                   </div>
 
                   <div className="pt-4 border-t border-slate-100">
+                    <label className={labelCls}>E-Mail-Adresse (für die Eingangsbestätigung) *</label>
+                    <Input
+                      type="email"
+                      value={form.email}
+                      onChange={update('email')}
+                      placeholder="ihre@email.de"
+                      className={inputCls}
+                      data-testid="widerruf-email"
+                    />
+                  </div>
+
+                  <div className="pt-4 border-t border-slate-100">
                     <label className={labelCls}>Anschrift des/der Verbraucher(s)</label>
                     <Textarea
                       value={form.anschrift}
@@ -270,23 +317,49 @@ ${form.name || ''}`;
                   <p className="text-xs text-slate-400 pt-3 border-t border-slate-100">(*) Unzutreffendes streichen.</p>
                 </div>
 
-                <div className="mt-6 flex flex-col sm:flex-row gap-3">
+                {confirmation ? (
+                  <div className="mt-6 rounded-2xl border border-green-200 bg-green-50 p-6 text-center" data-testid="widerruf-confirmation">
+                    <CheckCircle2 className="h-10 w-10 text-green-600 mx-auto mb-3" />
+                    <h3 className="text-lg font-bold text-green-900 mb-2">Ihr Widerruf ist bei uns eingegangen</h3>
+                    <p className="text-sm text-green-900/90 leading-relaxed">
+                      Eingang: <strong>{confirmation.received_display}</strong><br />
+                      Vorgangsnummer: {confirmation.id}<br />
+                      Eine Eingangsbestätigung wurde an Ihre E-Mail-Adresse gesendet.
+                    </p>
+                  </div>
+                ) : (
+                <>
+                <div className="mt-6">
+                  <Button
+                    onClick={handleOnlineWiderruf}
+                    disabled={submitting}
+                    className="w-full bg-[#2c7a7b] hover:bg-[#285e61] text-white rounded-full py-6 text-base disabled:opacity-50"
+                    data-testid="send-widerruf-online"
+                  >
+                    {submitting ? 'Wird übermittelt…' : 'Jetzt widerrufen'}
+                  </Button>
+                  <p className="text-xs text-slate-400 mt-2 text-center">
+                    Ihr Widerruf wird direkt an uns übermittelt – Sie erhalten unverzüglich eine
+                    Eingangsbestätigung mit Datum und Uhrzeit per E-Mail.
+                  </p>
+                </div>
+                <div className="mt-4 flex flex-col sm:flex-row gap-3">
                   <Button
                     onClick={handleSend}
-                    className="flex-1 bg-[#2c7a7b] hover:bg-[#285e61] text-white rounded-full py-6"
+                    variant="outline"
+                    className="flex-1 rounded-full py-5 border-slate-300"
                     data-testid="send-widerruf"
                   >
-                    <Send className="h-4 w-4 mr-2" /> Widerruf per E-Mail senden
+                    <Send className="h-4 w-4 mr-2" /> Alternativ per E-Mail-Programm
                   </Button>
                   <a href={PDF_URL} target="_blank" rel="noopener noreferrer" className="flex-1">
-                    <Button variant="outline" className="w-full rounded-full py-6 border-slate-300" data-testid="download-widerrufs-pdf">
+                    <Button variant="outline" className="w-full rounded-full py-5 border-slate-300" data-testid="download-widerrufs-pdf">
                       <Download className="h-4 w-4 mr-2" /> PDF herunterladen
                     </Button>
                   </a>
                 </div>
-                <p className="text-xs text-slate-400 mt-3 text-center">
-                  Beim Klick auf „Widerruf per E-Mail senden" öffnet sich Ihr E-Mail-Programm mit allen Angaben vorausgefüllt.
-                </p>
+                </>
+                )}
               </div>
             </AnimateOnScroll>
 
