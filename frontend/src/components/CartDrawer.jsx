@@ -16,7 +16,7 @@ const eur = (v) => (v == null ? '–' : `${v.toFixed(2).replace('.', ',')} €`)
 
 const CartDrawer = () => {
   const { items, total, itemsTotal, shippingFee, hasShopItems, updateQuantity, removeItem, clearCart, isOpen, setIsOpen } = useCart();
-  const [contact, setContact] = useState({ name: '', email: '', phone: '' });
+  const [contact, setContact] = useState({ name: '', email: '', phone: '', strasse: '', plz: '', ort: '' });
   const [agb, setAgb] = useState(false);
   const [stripeSubmitting, setStripeSubmitting] = useState(false);
 
@@ -35,7 +35,7 @@ const CartDrawer = () => {
     }
   };
 
-  const contactComplete = contact.name.trim() && contact.email.trim();
+  const contactComplete = contact.name.trim() && contact.email.trim() && contact.strasse.trim() && contact.plz.trim() && contact.ort.trim();
   const readyToPay = items.length > 0 && contactComplete && agb;
 
   const createCartOrder = async () => {
@@ -44,6 +44,9 @@ const CartDrawer = () => {
         name: contact.name,
         email: contact.email,
         phone: contact.phone || null,
+        strasse: contact.strasse || null,
+        plz: contact.plz || null,
+        ort: contact.ort || null,
         items: items.map((i) => ({
           product_id: i.product_id,
           item_type: i.item_type || 'coating',
@@ -149,9 +152,14 @@ const CartDrawer = () => {
                 <span className="text-xl font-bold text-slate-800" data-testid="cart-total">{eur(total)}</span>
               </div>
             </div>
-            <p className="text-[11px] text-slate-400 -mt-3">
-              {hasShopItems ? 'Handgefertigt auf Bestellung · sicher verpackt versendet' : 'inkl. vorfrankiertem Versandlabel · finale Annahme nach Wareneingang'}
-            </p>
+            <div className="text-[11px] text-slate-400 -mt-3 space-y-0.5">
+              {items.some((i) => i.item_type !== 'shop') && (
+                <p>Veredelung: inkl. vorfrankiertem Versandlabel zum Einsenden · finale Annahme nach Wareneingang</p>
+              )}
+              {hasShopItems && (
+                <p>Handgefertigte Stücke: werden gefertigt und an Sie versendet – kein Einsenden nötig</p>
+              )}
+            </div>
 
             <div className="space-y-3 p-4 bg-slate-50 rounded-xl border border-slate-200">
               <p className="text-sm font-bold text-slate-800">Ihre Kontaktdaten</p>
@@ -162,6 +170,20 @@ const CartDrawer = () => {
               <div>
                 <Label htmlFor="cart-email" className="text-slate-700 mb-1 block text-xs font-medium">E-Mail *</Label>
                 <Input id="cart-email" type="email" value={contact.email} onChange={(e) => setContact({ ...contact, email: e.target.value })} placeholder="ihre@email.de" className="bg-white border-slate-200" data-testid="cart-email-input" />
+              </div>
+              <div>
+                <Label htmlFor="cart-strasse" className="text-slate-700 mb-1 block text-xs font-medium">Straße & Hausnummer *</Label>
+                <Input id="cart-strasse" value={contact.strasse} onChange={(e) => setContact({ ...contact, strasse: e.target.value })} placeholder="Musterstraße 1" className="bg-white border-slate-200" data-testid="cart-strasse-input" />
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <Label htmlFor="cart-plz" className="text-slate-700 mb-1 block text-xs font-medium">PLZ *</Label>
+                  <Input id="cart-plz" value={contact.plz} onChange={(e) => setContact({ ...contact, plz: e.target.value })} placeholder="53547" className="bg-white border-slate-200" data-testid="cart-plz-input" />
+                </div>
+                <div className="col-span-2">
+                  <Label htmlFor="cart-ort" className="text-slate-700 mb-1 block text-xs font-medium">Ort *</Label>
+                  <Input id="cart-ort" value={contact.ort} onChange={(e) => setContact({ ...contact, ort: e.target.value })} placeholder="Kasbach-Ohlenberg" className="bg-white border-slate-200" data-testid="cart-ort-input" />
+                </div>
               </div>
               <div>
                 <Label htmlFor="cart-phone" className="text-slate-700 mb-1 block text-xs font-medium">Telefon (optional)</Label>
@@ -199,7 +221,7 @@ const CartDrawer = () => {
               </Button>
               {!readyToPay && (
                 <p className="text-xs text-slate-400 text-center mt-2">
-                  Bitte Kontaktdaten ausfüllen und den rechtlichen Hinweisen zustimmen.
+                  Bitte Kontaktdaten inkl. Adresse ausfüllen und den rechtlichen Hinweisen zustimmen.
                 </p>
               )}
             </div>
