@@ -1023,6 +1023,9 @@ class CartOrderRequest(BaseModel):
     name: str
     email: EmailStr
     phone: Optional[str] = None
+    strasse: Optional[str] = None
+    plz: Optional[str] = None
+    ort: Optional[str] = None
     note: Optional[str] = None
     items: List[CartItemRequest] = Field(min_length=1, max_length=30)
 
@@ -1118,6 +1121,10 @@ async def create_cart_order(request: CartOrderRequest):
         "name": request.name,
         "email": request.email,
         "phone": request.phone,
+        "address": f"{request.strasse or ''}, {request.plz or ''} {request.ort or ''}".strip(', '),
+        "address_street": request.strasse,
+        "address_zip": request.plz,
+        "address_city": request.ort,
         "description": request.note,
         "items": lines,
         "shipping_fee_eur": shipping_fee,
@@ -1154,16 +1161,35 @@ async def create_cart_order(request: CartOrderRequest):
     </table>
     """
 
+    has_coating_items = any(l.get("item_type") != "shop" for l in lines)
+    delivery_notes = ""
+    if has_coating_items:
+        delivery_notes += f"""
+        <div style="background:#f8fafc;border-radius:12px;padding:16px 18px;margin:16px 0;">
+          <p style="margin:0 0 6px;font-weight:bold;color:#1e293b;">📦 So erreichen uns Ihre Stücke (Veredelungsauftrag)</p>
+          <p style="margin:0;color:#475569;font-size:14px;">Nach Zahlungseingang erhalten Sie Ihr vorfrankiertes
+          Versandlabel per E-Mail. Stücke sicher verpacken, einen Zettel mit der Auftragsnummer
+          <strong>{order_id}</strong> beilegen, Label aufkleben, abgeben – fertig.<br>
+          <span style="color:#94a3b8;font-size:12px;">Alternativ eigenständig senden an: Kathodik – Galvanotechnik,
+          Hannes Barfuß, Gartenstraße 70, 53547 Kasbach-Ohlenberg (Auftragsnummer beilegen).</span></p>
+        </div>"""
+    if has_shop_items:
+        delivery_notes += """
+        <div style="background:#f8fafc;border-radius:12px;padding:16px 18px;margin:16px 0;">
+          <p style="margin:0 0 6px;font-weight:bold;color:#1e293b;">🌹 Ihre handgefertigten Stücke</p>
+          <p style="margin:0;color:#475569;font-size:14px;">Werden nach Ihrer Bestellung von Hand gefertigt und
+          direkt an Sie versendet – Sie müssen nichts einsenden.</p>
+        </div>"""
+
     await send_email_via_resend(
         to_email=request.email,
         subject="Kathodik – Ihre Bestellung ist eingegangen",
         html_content=f"""
         <h2 style="margin:0 0 8px;color:#1e293b;">Vielen Dank für Ihre Bestellung, {request.name}!</h2>
-        <p>Wir haben Ihre Bestellung erhalten. Nach Zahlungseingang senden wir Ihnen Ihr
-        vorfrankiertes Versandlabel per E-Mail – damit schicken Sie uns Ihre Stücke bequem zu.</p>
+        <p>Wir haben Ihre Bestellung erhalten.</p>
         {items_table}
-        <p style="color:#64748b;font-size:13px;">Auftragsnummer: {order_id}<br>
-        Die finale Annahme erfolgt nach Prüfung der eingesandten Teile.</p>
+        {delivery_notes}
+        <p style="color:#64748b;font-size:13px;">Auftragsnummer: {order_id}{'<br>Die finale Annahme von Veredelungsaufträgen erfolgt nach Prüfung der eingesandten Teile.' if has_coating_items else ''}</p>
         <p>Mit freundlichen Grüßen<br><strong>Ihr Kathodik-Team</strong></p>
         """
     )
@@ -1174,7 +1200,8 @@ async def create_cart_order(request: CartOrderRequest):
         <h2 style="margin:0 0 8px;color:#1e293b;">Neue Warenkorb-Bestellung</h2>
         <p><strong>Name:</strong> {request.name}<br>
         <strong>E-Mail:</strong> {request.email}<br>
-        <strong>Telefon:</strong> {request.phone or 'Nicht angegeben'}</p>
+        <strong>Telefon:</strong> {request.phone or 'Nicht angegeben'}<br>
+        <strong>Adresse:</strong> {doc['address'] or 'Nicht angegeben'}</p>
         {items_table}
         {_order_action_buttons(order_id, doc['action_token'])}
         <p style="color:#64748b;font-size:13px;">Auftragsnummer: {order_id} · Zahlung: ausstehend (PayPal)</p>
@@ -1823,8 +1850,160 @@ async def stripe_verify_session(session_id: str):
                 "paid_at": datetime.now(timezone.utc).isoformat(),
             }}
         )
+        order = await db.configurator_orders.find_one({"id": internal_id}, {"_id": 0})
+        if order:
+            try:
+                await _create_and_send_inbound_label(order)
+            except Exception as e:
+                logger.error(f"Label-Automatik (Stripe) fehlgeschlagen: {e}")
         return {"paid": True, "order_id": internal_id}
     return {"paid": False, "order_id": internal_id}
+
+# ─── Sendcloud: automatisches Einsende-Label (Retoure) nach Zahlungseingang ───
+def _split_street(street: str):
+    """Trennt "Musterstraße 12a" in (Straße, Hausnummer)."""
+    parts = (street or "").rsplit(" ", 1)
+    if len(parts) == 2 and any(ch.isdigit() for ch in parts[1]):
+        return parts[0], parts[1]
+    return street or "", ""
+
+async def _create_and_send_inbound_label(order: dict) -> bool:
+    """Erstellt ein Sendcloud-Retourenlabel (Kunde -> Kathodik) und mailt es dem Kunden.
+    Schlägt still fehl (Admin-Mail als Fallback), damit der Zahlungsfluss nie bricht."""
+    pub = os.environ.get("SENDCLOUD_PUBLIC_KEY")
+    sec = os.environ.get("SENDCLOUD_SECRET_KEY")
+    if not pub or not sec:
+        return False
+    if order.get("label_sent"):
+        return True
+    needs_label = order.get("order_type") == "cart_order" and any(
+        l.get("item_type") != "shop" for l in order.get("items", [])
+    )
+    if not needs_label:
+        return False
+
+    async def _fallback(reason: str):
+        logger.error(f"Sendcloud-Label fehlgeschlagen für {order['id']}: {reason}")
+        await send_email_via_resend(
+            to_email="service@kathodik.com",
+            subject=f"Einsende-Label konnte nicht erstellt werden ({order.get('name')})",
+            html_content=f"""
+            <h2 style="margin:0 0 8px;color:#1e293b;">Label-Automatik fehlgeschlagen</h2>
+            <p>Für Auftrag <strong>{order['id']}</strong> von {order.get('name')} ({order.get('email')})
+            konnte kein Einsende-Label erstellt werden:</p>
+            <p style="color:#dc2626;">{reason}</p>
+            <p>Bitte Label manuell in Sendcloud erstellen und dem Kunden senden.<br>
+            Kundenadresse: {order.get('address') or 'Nicht angegeben'}</p>
+            """
+        )
+
+    street = order.get("address_street")
+    if not (street and order.get("address_zip") and order.get("address_city")):
+        await _fallback("Keine vollständige Kundenadresse vorhanden")
+        return False
+
+    import httpx
+    try:
+        auth = (pub, sec)
+        async with httpx.AsyncClient(timeout=30.0, auth=auth) as http:
+            method_id = os.environ.get("SENDCLOUD_METHOD_ID")
+            if not method_id:
+                r = await http.get("https://panel.sendcloud.sc/api/v2/shipping_methods?is_return=true")
+                if r.status_code != 200:
+                    await _fallback(f"Versandarten nicht abrufbar: {r.status_code} {r.text[:200]}")
+                    return False
+                methods = r.json().get("shipping_methods", [])
+                method = next((m for m in methods if "dhl" in m.get("name", "").lower()), methods[0] if methods else None)
+                if not method:
+                    await _fallback("Keine retourenfähige Versandart im Sendcloud-Konto aktiviert")
+                    return False
+                method_id = method["id"]
+
+            cust_street, cust_no = _split_street(street)
+            payload = {"parcel": {
+                # Empfänger: Kathodik (Retoure geht an uns)
+                "name": "Hannes Barfuß",
+                "company_name": "Kathodik – Galvanotechnik",
+                "address": "Gartenstraße",
+                "house_number": "70",
+                "city": "Kasbach-Ohlenberg",
+                "postal_code": "53547",
+                "country": "DE",
+                "email": "service@kathodik.com",
+                # Absender: Kunde
+                "from_name": order.get("name"),
+                "from_address_1": cust_street,
+                "from_house_number": cust_no,
+                "from_postal_code": order.get("address_zip"),
+                "from_city": order.get("address_city"),
+                "from_country": "DE",
+                "from_email": order.get("email"),
+                "weight": os.environ.get("SENDCLOUD_DEFAULT_WEIGHT", "2.000"),
+                "is_return": True,
+                "request_label": True,
+                "shipment": {"id": int(method_id)},
+                "order_number": order["id"][:13],
+            }}
+            r = await http.post("https://panel.sendcloud.sc/api/v2/parcels", json=payload)
+            if r.status_code not in (200, 201):
+                await _fallback(f"Parcel-Erstellung: {r.status_code} {r.text[:300]}")
+                return False
+            parcel = r.json().get("parcel", {})
+            label_info = parcel.get("label", {}) or {}
+            label_url = label_info.get("label_printer")
+            if not label_url:
+                normal = label_info.get("normal_printer") or []
+                label_url = normal[0] if normal else None
+            pdf_b64 = None
+            if label_url:
+                lr = await http.get(label_url)
+                if lr.status_code == 200:
+                    pdf_b64 = base64.b64encode(lr.content).decode()
+            tracking = parcel.get("tracking_number")
+    except Exception as e:
+        await _fallback(f"Unerwarteter Fehler: {e}")
+        return False
+
+    await send_email_via_resend(
+        to_email=order["email"],
+        subject="Kathodik – Ihr Versandlabel zum Einsenden 📦",
+        attachments=[{"filename": "kathodik_versandlabel.pdf", "content": pdf_b64}] if pdf_b64 else None,
+        html_content=f"""
+        <h2 style="margin:0 0 8px;color:#1e293b;">Ihr Versandlabel ist da, {order.get('name')}!</h2>
+        <p>Vielen Dank für Ihre Zahlung. Im Anhang finden Sie Ihr vorfrankiertes Versandlabel.</p>
+        <div style="background:#f8fafc;border-radius:12px;padding:16px 18px;margin:16px 0;">
+          <p style="margin:0;color:#475569;font-size:14px;">
+          <strong>So einfach geht's:</strong><br>
+          1. Stücke sicher verpacken (gepolstert)<br>
+          2. Zettel mit Ihrer Auftragsnummer <strong>{order['id'][:13]}</strong> beilegen<br>
+          3. Label ausdrucken und aufkleben<br>
+          4. Paket bei der nächsten Filiale oder Packstation abgeben – fertig!</p>
+        </div>
+        {f'<p style="color:#64748b;font-size:13px;">Sendungsverfolgung: {tracking}</p>' if tracking else ''}
+        <p>Wir melden uns, sobald Ihre Stücke bei uns eingetroffen sind.</p>
+        <p>Mit freundlichen Grüßen<br><strong>Ihr Kathodik-Team</strong></p>
+        """
+    )
+    await db.configurator_orders.update_one(
+        {"id": order["id"]},
+        {"$set": {"label_sent": True, "sendcloud_parcel_id": parcel.get("id"), "tracking_number": tracking}}
+    )
+    return True
+
+@api_router.post("/configurator/orders/{order_id}/send-label")
+async def resend_inbound_label(order_id: str, current_user: User = Depends(get_current_user)):
+    """(Erneut) ein Einsende-Label erstellen und an den Kunden senden (admin only)."""
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    order = await db.configurator_orders.find_one({"id": order_id}, {"_id": 0})
+    if not order:
+        raise HTTPException(status_code=404, detail="Auftrag nicht gefunden")
+    await db.configurator_orders.update_one({"id": order_id}, {"$unset": {"label_sent": ""}})
+    order.pop("label_sent", None)
+    ok = await _create_and_send_inbound_label(order)
+    if not ok:
+        raise HTTPException(status_code=502, detail="Label konnte nicht erstellt werden – Details per E-Mail / im Log")
+    return {"id": order_id, "label_sent": True}
 
 def _paypal_base_url():
     return PAYPAL_API_URLS.get(os.environ.get("PAYPAL_MODE", "sandbox").lower(), PAYPAL_API_URLS["sandbox"])
@@ -1917,6 +2096,12 @@ async def paypal_capture_order(order_id: str):
                         "paid_at": datetime.now(timezone.utc).isoformat(),
                     }}
                 )
+                order = await db.configurator_orders.find_one({"id": internal_id}, {"_id": 0})
+                if order:
+                    try:
+                        await _create_and_send_inbound_label(order)
+                    except Exception as e:
+                        logger.error(f"Label-Automatik (PayPal) fehlgeschlagen: {e}")
                 # Notify admin
                 order_doc = await db.configurator_orders.find_one({"id": internal_id}, {"_id": 0})
                 if order_doc:

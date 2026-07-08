@@ -176,6 +176,17 @@ const AdminPortal = () => {
     }
   };
 
+  const sendInboundLabel = async (orderId) => {
+    try {
+      const headers = { Authorization: `Bearer ${token}` };
+      await axios.post(`${API}/configurator/orders/${orderId}/send-label`, {}, { headers });
+      toast.success('Einsende-Label wurde erstellt und an den Kunden gesendet.');
+      setConfiguratorOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, label_sent: true } : o)));
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Label konnte nicht erstellt werden');
+    }
+  };
+
   const loadOrderFiles = async (orderId) => {
     if (orderFiles[orderId]) {
       setOrderFiles((prev) => { const n = { ...prev }; delete n[orderId]; return n; });
@@ -1030,6 +1041,11 @@ const AdminPortal = () => {
                               {order.status === 'in_progress' && (
                                 <Button size="sm" onClick={() => updateOrderStatus(order.id, 'completed')} className="bg-slate-700 hover:bg-slate-800 text-white rounded-full px-4 h-8 text-xs">
                                   ✅ Abschließen
+                                </Button>
+                              )}
+                              {order.order_type === 'cart_order' && order.items?.some((it) => it.item_type !== 'shop') && (
+                                <Button size="sm" variant="outline" onClick={() => sendInboundLabel(order.id)} className="rounded-full px-4 h-8 text-xs border-slate-300">
+                                  📦 {order.label_sent ? 'Label erneut senden' : 'Einsende-Label senden'}
                                 </Button>
                               )}
                               {order.status === 'declined' && (
