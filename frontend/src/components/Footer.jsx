@@ -24,6 +24,19 @@ const Footer = () => {
             <p className="text-sm text-slate-400 leading-relaxed">
               Metallveredelung aus Leidenschaft. Damit Ihr Lieblingsstück Geschichte schreibt – und nicht der Rost.
             </p>
+            <a
+              href="https://www.dgo-online.de"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block mt-6 bg-white rounded-xl p-3 hover:opacity-90 transition-opacity"
+              data-testid="dgo-badge"
+            >
+              <img
+                src="/dgo-mitglied.png"
+                alt="Mitglied in der DGO – Deutsche Gesellschaft für Galvano- und Oberflächentechnik e.V."
+                className="h-16 w-auto"
+              />
+            </a>
           </div>
 
           {/* Navigation */}
